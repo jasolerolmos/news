@@ -1,0 +1,13 @@
+# Archivos que no deben copiarse al contenedor Docker
+node_modules
+npm-debug.log
+.next
+.git
+.gitignore
+README.md
+.env*.local
+.vercel
+
+# Archivos PHP antiguos (opcional)
+*.php
+*.py

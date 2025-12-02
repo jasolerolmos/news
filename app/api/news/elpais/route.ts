@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import axios from 'axios';
-import * as cheerio from 'cheerio';
+import { JSDOM } from 'jsdom';
 
 interface NewsItem {
     title: string;
@@ -31,27 +31,28 @@ export async function GET() {
             timeout: 15000
         });
 
-        const $ = cheerio.load(response.data);
+        const dom = new JSDOM(response.data);
+        const document = dom.window.document;
         const newsList: NewsItem[] = [];
         const seenTitles = new Set<string>();
 
-        $('article').each((_, article) => {
-            const $article = $(article);
+        const articles = document.querySelectorAll('article');
 
+        articles.forEach((article) => {
             // Find headline
             let headline = null;
             for (const tag of ['h1', 'h2', 'h3', 'h4']) {
-                const found = $article.find(tag).first();
-                if (found.length > 0) {
+                const found = article.querySelector(tag);
+                if (found) {
                     headline = found;
                     break;
                 }
             }
 
             if (headline) {
-                const title = headline.text().trim();
-                const linkElement = $article.find('a').first();
-                let url = linkElement.attr('href') || '';
+                const title = headline.textContent?.trim() || '';
+                const linkElement = article.querySelector('a');
+                let url = linkElement?.getAttribute('href') || '';
 
                 // Make URL absolute
                 if (url && !url.startsWith('http')) {

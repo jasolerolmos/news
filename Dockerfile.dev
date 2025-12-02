@@ -1,0 +1,19 @@
+# Dockerfile para desarrollo (más simple y rápido)
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Copiar package files
+COPY package.json package-lock.json* ./
+
+# Instalar dependencias
+RUN npm install
+
+# Copiar el resto del código
+COPY . .
+
+# Exponer puerto
+EXPOSE 3000
+
+# Comando para desarrollo con hot-reload
+CMD ["npm", "run", "dev"]

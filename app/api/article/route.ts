@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import axios from 'axios';
-import * as cheerio from 'cheerio';
+import { JSDOM } from 'jsdom';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
@@ -18,10 +18,13 @@ export async function GET(request: Request) {
             timeout: 15000
         });
 
-        const $ = cheerio.load(response.data);
+        const dom = new JSDOM(response.data);
+        const document = dom.window.document;
 
         // Extract article content (this is a generic approach)
-        const title = $('h1').first().text().trim() || $('title').first().text().trim();
+        const h1 = document.querySelector('h1');
+        const titleTag = document.querySelector('title');
+        const title = h1?.textContent?.trim() || titleTag?.textContent?.trim() || '';
 
         // Try to find article body
         let body = '';
@@ -34,13 +37,16 @@ export async function GET(request: Request) {
         ];
 
         for (const selector of bodySelectors) {
-            const paragraphs = $(selector);
+            const paragraphs = document.querySelectorAll(selector);
             if (paragraphs.length > 0) {
-                body = paragraphs
-                    .map((_, el) => $(el).text().trim())
-                    .get()
-                    .filter(p => p.length > 20)
-                    .join('\n\n');
+                const texts: string[] = [];
+                paragraphs.forEach((p) => {
+                    const text = p.textContent?.trim() || '';
+                    if (text.length > 20) {
+                        texts.push(text);
+                    }
+                });
+                body = texts.join('\n\n');
                 if (body.length > 100) break;
             }
         }
