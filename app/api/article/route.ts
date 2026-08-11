@@ -4,10 +4,18 @@ import { JSDOM } from 'jsdom';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
-    const url = searchParams.get('url');
+    let url = searchParams.get('url');
 
     if (!url) {
         return NextResponse.json({ error: 'URL parameter is required' }, { status: 400 });
+    }
+
+    // Clean URL: remove tracking parameters and fragments
+    try {
+        const parsedUrl = new URL(url);
+        url = parsedUrl.origin + parsedUrl.pathname;
+    } catch (e) {
+        url = url.split('?')[0].split('#')[0];
     }
 
     try {

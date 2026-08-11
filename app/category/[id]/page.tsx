@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 
 interface NewsItem {
     title: string;
@@ -11,41 +10,24 @@ interface NewsItem {
     source: string;
 }
 
-export default function Home() {
+export default function CategoryPage({ params }: { params: { id: string } }) {
+    const categoryId = params.id.toLowerCase();
+    
     const [allNews, setAllNews] = useState<NewsItem[]>([]);
     const [filteredNews, setFilteredNews] = useState<NewsItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
 
     const [sourceFilter, setSourceFilter] = useState('all');
-    const [categoryFilter, setCategoryFilter] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
-    const [urlInput, setUrlInput] = useState('');
-    const router = useRouter();
-
-    const [categories, setCategories] = useState<string[]>([]);
-
-    const handleUrlSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (urlInput.trim()) {
-            let cleanUrl = urlInput.trim();
-            try {
-                const parsedUrl = new URL(cleanUrl);
-                cleanUrl = parsedUrl.origin + parsedUrl.pathname;
-            } catch (err) {
-                cleanUrl = cleanUrl.split('?')[0].split('#')[0];
-            }
-            router.push(`/article?url=${encodeURIComponent(cleanUrl)}`);
-        }
-    };
 
     useEffect(() => {
         async function fetchNews() {
             try {
                 setLoading(true);
                 const [abcRes, elpaisRes] = await Promise.all([
-                    fetch('/api/news/abc'),
-                    fetch('/api/news/elpais')
+                    fetch(`/api/news/abc?section=${categoryId}`),
+                    fetch(`/api/news/elpais?section=${categoryId}`)
                 ]);
 
                 const abcData = await abcRes.json();
@@ -54,23 +36,16 @@ export default function Home() {
                 const combined = [...abcData, ...elpaisData];
                 setAllNews(combined);
                 setFilteredNews(combined);
-
-                // Extract unique categories
-                const uniqueCategories = Array.from(
-                    new Set(combined.map((item: NewsItem) => item.category))
-                ).sort();
-                setCategories(uniqueCategories as string[]);
-
                 setLoading(false);
             } catch (err) {
-                console.error('Error fetching news:', err);
+                console.error('Error fetching news for category:', err);
                 setError(true);
                 setLoading(false);
             }
         }
 
         fetchNews();
-    }, []);
+    }, [categoryId]);
 
     useEffect(() => {
         let filtered = allNews;
@@ -78,11 +53,6 @@ export default function Home() {
         // Apply source filter
         if (sourceFilter !== 'all') {
             filtered = filtered.filter(item => item.source === sourceFilter);
-        }
-
-        // Apply category filter
-        if (categoryFilter !== 'all') {
-            filtered = filtered.filter(item => item.category === categoryFilter);
         }
 
         // Apply search filter
@@ -93,12 +63,12 @@ export default function Home() {
         }
 
         setFilteredNews(filtered);
-    }, [sourceFilter, categoryFilter, searchTerm, allNews]);
+    }, [sourceFilter, searchTerm, allNews]);
 
     if (loading) {
         return (
             <div className="container">
-                <div className="loading">📰 Cargando noticias...</div>
+                <div className="loading">📰 Cargando noticias de {categoryId}...</div>
             </div>
         );
     }
@@ -106,7 +76,7 @@ export default function Home() {
     if (error) {
         return (
             <div className="container">
-                <div className="error">⚠️ No se pudieron cargar las noticias. Verifica tu conexión o intenta más tarde.</div>
+                <div className="error">⚠️ No se pudieron cargar las noticias de esta sección.</div>
             </div>
         );
     }
@@ -114,9 +84,25 @@ export default function Home() {
     return (
         <div className="container">
             <header>
-                <h1>Agregador de Noticias</h1>
-                <p className="subtitle">ABC y El País en un solo lugar</p>
-                <div className="stats">📰 {filteredNews.length} noticias mostradas</div>
+                <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'center' }}>
+                    <Link href="/" style={{
+                        color: 'var(--text-secondary)',
+                        textDecoration: 'none',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        fontSize: '0.875rem',
+                        fontWeight: 600
+                    }}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                        </svg>
+                        Volver a portada
+                    </Link>
+                </div>
+                <h1>Sección: <span style={{ textTransform: 'capitalize' }}>{categoryId}</span></h1>
+                <p className="subtitle">Noticias directas desde las secciones de ABC y El País</p>
+                <div className="stats">📰 {filteredNews.length} noticias encontradas</div>
             </header>
 
             {/* Search Box */}
@@ -128,7 +114,7 @@ export default function Home() {
                     <input
                         type="text"
                         className="search-input"
-                        placeholder="Buscar noticias por título..."
+                        placeholder="Buscar en esta sección..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         autoComplete="off"
@@ -145,31 +131,6 @@ export default function Home() {
                         </button>
                     )}
                 </div>
-            </div>
-
-            {/* Custom URL Input */}
-            <div className="search-container" style={{ marginTop: '1rem' }}>
-                <form className="search-box" onSubmit={handleUrlSubmit} style={{ display: 'flex', alignItems: 'center' }}>
-                    <svg className="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                    </svg>
-                    <input
-                        type="url"
-                        className="search-input"
-                        placeholder="Pegar URL de una noticia para leer..."
-                        value={urlInput}
-                        onChange={(e) => setUrlInput(e.target.value)}
-                        autoComplete="off"
-                        required
-                    />
-                    <button
-                        type="submit"
-                        className="filter-btn active"
-                        style={{ marginLeft: '0.5rem', padding: '0.5rem 1rem', whiteSpace: 'nowrap' }}
-                    >
-                        Leer noticia
-                    </button>
-                </form>
             </div>
 
             {/* Filter Bar */}
@@ -195,32 +156,13 @@ export default function Home() {
                         El País
                     </button>
                 </div>
-                <div className="filter-divider"></div>
-                <div className="filter-section">
-                    <span className="filter-section-label">Categoría:</span>
-                    <button
-                        className={`filter-btn ${categoryFilter === 'all' ? 'active' : ''}`}
-                        onClick={() => setCategoryFilter('all')}
-                    >
-                        Todas
-                    </button>
-                    {categories.map((cat) => (
-                        <button
-                            key={cat}
-                            className={`filter-btn ${categoryFilter === cat ? 'active' : ''}`}
-                            onClick={() => setCategoryFilter(cat)}
-                        >
-                            {cat.toLowerCase()}
-                        </button>
-                    ))}
-                </div>
             </div>
 
             {/* News Grid */}
             <div className="news-grid">
                 {filteredNews.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-secondary)', gridColumn: '1 / -1' }}>
-                        <p>No se encontraron noticias con los filtros seleccionados.</p>
+                        <p>No se encontraron noticias en esta sección con los filtros actuales.</p>
                     </div>
                 ) : (
                     filteredNews.map((item, index) => (
@@ -228,16 +170,12 @@ export default function Home() {
                             key={`${item.source}-${index}`}
                             className="news-card"
                             data-source={item.source}
-                            data-category={item.category}
                         >
                             <div className="card-content">
                                 <span className={`source-badge ${item.source.toLowerCase()}`}>
                                     {item.source === 'ABC' ? 'ABC' : 'EL PAÍS'}
                                 </span>
-                                <Link href={`/category/${item.category.toLowerCase()}`} style={{ textDecoration: 'none' }}>
-                                    <span className="category-tag" style={{ cursor: 'pointer' }}>{item.category}</span>
-                                </Link>
-                                <h2 className="news-title">
+                                <h2 className="news-title" style={{ marginTop: '1.5rem' }}>
                                     <Link href={`/article?url=${encodeURIComponent(item.url)}`} className="news-link">
                                         {item.title}
                                     </Link>
