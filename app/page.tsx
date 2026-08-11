@@ -21,6 +21,8 @@ export default function Home() {
     const [categoryFilter, setCategoryFilter] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
     const [urlInput, setUrlInput] = useState('');
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [isFiltersOpen, setIsFiltersOpen] = useState(false);
     const router = useRouter();
 
     const [categories, setCategories] = useState<string[]>([]);
@@ -43,15 +45,17 @@ export default function Home() {
         async function fetchNews() {
             try {
                 setLoading(true);
-                const [abcRes, elpaisRes] = await Promise.all([
+                const [abcRes, elpaisRes, idealRes] = await Promise.all([
                     fetch('/api/news/abc'),
-                    fetch('/api/news/elpais')
+                    fetch('/api/news/elpais'),
+                    fetch('/api/news/ideal')
                 ]);
 
                 const abcData = await abcRes.json();
                 const elpaisData = await elpaisRes.json();
+                const idealData = await idealRes.json();
 
-                const combined = [...abcData, ...elpaisData];
+                const combined = [...abcData, ...elpaisData, ...idealData];
                 setAllNews(combined);
                 setFilteredNews(combined);
 
@@ -111,13 +115,20 @@ export default function Home() {
         );
     }
 
+    // Calcular el "Top" de categorías (las 6 con más noticias)
+    const categoryCounts = allNews.reduce((acc, item) => {
+        acc[item.category] = (acc[item.category] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+    
+    // Ordenar categorías por cantidad de noticias (de mayor a menor)
+    const sortedCategories = [...categories].sort((a, b) => categoryCounts[b] - categoryCounts[a]);
+    
+    const topCategories = sortedCategories.slice(0, 6);
+    const otherCategories = sortedCategories.slice(6);
+    
     return (
-        <div className="container">
-            <header>
-                <h1>Agregador de Noticias</h1>
-                <p className="subtitle">ABC y El País en un solo lugar</p>
-                <div className="stats">📰 {filteredNews.length} noticias mostradas</div>
-            </header>
+        <div className="container" style={{ paddingTop: '1rem' }}>
 
             {/* Search Box */}
             <div className="search-container">
@@ -149,32 +160,46 @@ export default function Home() {
 
             {/* Custom URL Input */}
             <div className="search-container" style={{ marginTop: '1rem' }}>
-                <form className="search-box" onSubmit={handleUrlSubmit} style={{ display: 'flex', alignItems: 'center' }}>
-                    <svg className="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                    </svg>
-                    <input
-                        type="url"
-                        className="search-input"
-                        placeholder="Pegar URL de una noticia para leer..."
-                        value={urlInput}
-                        onChange={(e) => setUrlInput(e.target.value)}
-                        autoComplete="off"
-                        required
-                    />
-                    <button
-                        type="submit"
-                        className="filter-btn active"
-                        style={{ marginLeft: '0.5rem', padding: '0.5rem 1rem', whiteSpace: 'nowrap' }}
-                    >
+                <form className="url-form" onSubmit={handleUrlSubmit}>
+                    <div className="search-box">
+                        <svg className="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                        </svg>
+                        <input
+                            type="url"
+                            className="search-input"
+                            placeholder="Pegar URL de una noticia para leer..."
+                            value={urlInput}
+                            onChange={(e) => setUrlInput(e.target.value)}
+                            autoComplete="off"
+                            required
+                        />
+                    </div>
+                    <button type="submit" className="filter-btn active url-btn">
                         Leer noticia
                     </button>
                 </form>
             </div>
 
+            {/* Filter Toggle and Stats */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <span className="stats" style={{ margin: 0 }}>📰 {filteredNews.length} noticias</span>
+                <button 
+                    className="mobile-filter-toggle"
+                    style={{ width: 'auto', marginBottom: 0 }}
+                    onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ transform: isFiltersOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    </svg>
+                    {isFiltersOpen ? 'Ocultar filtros' : 'Mostrar filtros'}
+                </button>
+            </div>
+
             {/* Filter Bar */}
-            <div className="filter-container">
-                <div className="filter-section">
+            <div className={`filter-container-wrapper ${isFiltersOpen ? 'open' : ''}`}>
+                <div className="filter-container">
+                    <div className="filter-section">
                     <span className="filter-section-label">Fuente:</span>
                     <button
                         className={`filter-btn ${sourceFilter === 'all' ? 'active' : ''}`}
@@ -194,17 +219,23 @@ export default function Home() {
                     >
                         El País
                     </button>
+                    <button
+                        className={`filter-btn ${sourceFilter === 'IDEAL' ? 'active' : ''}`}
+                        onClick={() => setSourceFilter('IDEAL')}
+                    >
+                        Ideal
+                    </button>
                 </div>
                 <div className="filter-divider"></div>
                 <div className="filter-section">
-                    <span className="filter-section-label">Categoría:</span>
+                    <span className="filter-section-label">Top Categorías:</span>
                     <button
                         className={`filter-btn ${categoryFilter === 'all' ? 'active' : ''}`}
                         onClick={() => setCategoryFilter('all')}
                     >
                         Todas
                     </button>
-                    {categories.map((cat) => (
+                    {topCategories.map((cat) => (
                         <button
                             key={cat}
                             className={`filter-btn ${categoryFilter === cat ? 'active' : ''}`}
@@ -213,7 +244,40 @@ export default function Home() {
                             {cat.toLowerCase()}
                         </button>
                     ))}
+                    
+                    {otherCategories.length > 0 && (
+                        <div style={{ position: 'relative', marginLeft: '0.5rem' }}>
+                            <button
+                                className={`filter-btn ${otherCategories.includes(categoryFilter) ? 'active' : ''}`}
+                                style={{ paddingRight: '2.5rem', display: 'flex', alignItems: 'center' }}
+                                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                            >
+                                {otherCategories.includes(categoryFilter) ? categoryFilter.toLowerCase() : "Otras..."}
+                                <svg style={{ position: 'absolute', right: '1rem', transition: 'transform 0.2s', transform: isDropdownOpen ? 'rotate(180deg)' : 'rotate(0)' }} xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+                            
+                            {isDropdownOpen && (
+                                <div className="custom-dropdown">
+                                    {otherCategories.map(cat => (
+                                        <button
+                                            key={cat}
+                                            className={`dropdown-item ${categoryFilter === cat ? 'active' : ''}`}
+                                            onClick={() => {
+                                                setCategoryFilter(cat);
+                                                setIsDropdownOpen(false);
+                                            }}
+                                        >
+                                            {cat.toLowerCase()} <span className="dropdown-count">({categoryCounts[cat]})</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
+            </div>
             </div>
 
             {/* News Grid */}
@@ -232,7 +296,7 @@ export default function Home() {
                         >
                             <div className="card-content">
                                 <span className={`source-badge ${item.source.toLowerCase()}`}>
-                                    {item.source === 'ABC' ? 'ABC' : 'EL PAÍS'}
+                                    {item.source === 'ABC' ? 'ABC' : item.source === 'IDEAL' ? 'IDEAL' : 'EL PAÍS'}
                                 </span>
                                 <Link href={`/category/${item.category.toLowerCase()}`} style={{ textDecoration: 'none' }}>
                                     <span className="category-tag" style={{ cursor: 'pointer' }}>{item.category}</span>

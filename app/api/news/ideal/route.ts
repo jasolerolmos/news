@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     const section = searchParams.get('section');
     
     // Si hay una sección, construimos la URL de la sección, si no, la portada
-    const targetUrl = section ? `https://elpais.com/${encodeURIComponent(section)}/` : 'https://elpais.com/';
+    const targetUrl = section ? `https://www.ideal.es/${encodeURIComponent(section)}/` : 'https://www.ideal.es/';
 
     try {
         const response = await axios.get(targetUrl, {
@@ -35,7 +35,7 @@ export async function GET(request: Request) {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
                 'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
-                'Accept-Encoding': 'gzip, deflate',
+                'Accept-Encoding': 'gzip, deflate, br',
                 'Upgrade-Insecure-Requests': '1',
                 'Sec-Fetch-Dest': 'document',
                 'Sec-Fetch-Mode': 'navigate',
@@ -65,13 +65,12 @@ export async function GET(request: Request) {
 
             if (headline) {
                 const title = headline.textContent?.trim() || '';
-                // First try to find the link inside the headline, fallback to any link in article
-                const linkElement = headline.querySelector('a') || article.querySelector('a');
+                const linkElement = article.querySelector('a');
                 let url = linkElement?.getAttribute('href') || '';
 
                 // Make URL absolute
                 if (url && !url.startsWith('http')) {
-                    url = `https://elpais.com${url.startsWith('/') ? url : '/' + url}`;
+                    url = `https://www.ideal.es${url.startsWith('/') ? url : '/' + url}`;
                 }
 
                 // Filter valid titles
@@ -81,7 +80,7 @@ export async function GET(request: Request) {
                         title,
                         url,
                         category,
-                        source: 'ELPAIS'
+                        source: 'IDEAL'
                     });
                     seenTitles.add(title);
                 }
@@ -90,7 +89,7 @@ export async function GET(request: Request) {
 
         return NextResponse.json(newsList);
     } catch (error) {
-        console.error('Error fetching El País news:', error);
+        console.error('Error fetching IDEAL news:', error);
         return NextResponse.json([], { status: 500 });
     }
 }

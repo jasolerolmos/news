@@ -25,15 +25,24 @@ export default function CategoryPage({ params }: { params: { id: string } }) {
         async function fetchNews() {
             try {
                 setLoading(true);
-                const [abcRes, elpaisRes] = await Promise.all([
+                const [abcRes, elpaisRes, idealRes] = await Promise.all([
                     fetch(`/api/news/abc?section=${categoryId}`),
-                    fetch(`/api/news/elpais?section=${categoryId}`)
+                    fetch(`/api/news/elpais?section=${categoryId}`),
+                    fetch(`/api/news/ideal?section=${categoryId}`)
                 ]);
 
                 const abcData = await abcRes.json();
                 const elpaisData = await elpaisRes.json();
+                
+                // Si la ruta ideal falla y devuelve HTML de error, esto fallará y el catch lo atrapará
+                let idealData = [];
+                try {
+                    idealData = await idealRes.json();
+                } catch(e) {
+                    // Ignoramos el fallo de Ideal si aún no está implementado para categorías
+                }
 
-                const combined = [...abcData, ...elpaisData];
+                const combined = [...abcData, ...elpaisData, ...idealData];
                 setAllNews(combined);
                 setFilteredNews(combined);
                 setLoading(false);
@@ -101,7 +110,7 @@ export default function CategoryPage({ params }: { params: { id: string } }) {
                     </Link>
                 </div>
                 <h1>Sección: <span style={{ textTransform: 'capitalize' }}>{categoryId}</span></h1>
-                <p className="subtitle">Noticias directas desde las secciones de ABC y El País</p>
+                <p className="subtitle">Noticias directas desde las secciones de ABC, El País e Ideal</p>
                 <div className="stats">📰 {filteredNews.length} noticias encontradas</div>
             </header>
 
@@ -155,6 +164,12 @@ export default function CategoryPage({ params }: { params: { id: string } }) {
                     >
                         El País
                     </button>
+                    <button
+                        className={`filter-btn ${sourceFilter === 'IDEAL' ? 'active' : ''}`}
+                        onClick={() => setSourceFilter('IDEAL')}
+                    >
+                        Ideal
+                    </button>
                 </div>
             </div>
 
@@ -173,7 +188,7 @@ export default function CategoryPage({ params }: { params: { id: string } }) {
                         >
                             <div className="card-content">
                                 <span className={`source-badge ${item.source.toLowerCase()}`}>
-                                    {item.source === 'ABC' ? 'ABC' : 'EL PAÍS'}
+                                    {item.source === 'ABC' ? 'ABC' : item.source === 'IDEAL' ? 'IDEAL' : 'EL PAÍS'}
                                 </span>
                                 <h2 className="news-title" style={{ marginTop: '1.5rem' }}>
                                     <Link href={`/article?url=${encodeURIComponent(item.url)}`} className="news-link">

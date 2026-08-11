@@ -6,8 +6,8 @@ import Link from 'next/link'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-    title: 'Agregador de Noticias',
-    description: 'ABC y El País en un solo lugar',
+    title: 'Noticias',
+    description: 'ABC, El País e Ideal en un solo lugar',
 }
 
 export default function RootLayout({
@@ -26,20 +26,42 @@ export default function RootLayout({
                 <nav style={{ 
                     background: 'var(--card-bg)', 
                     borderBottom: '1px solid var(--border-color)', 
-                    padding: '1rem', 
-                    display: 'flex', 
-                    gap: '1.5rem', 
-                    justifyContent: 'center', 
-                    flexWrap: 'wrap',
-                    boxShadow: 'var(--shadow-sm)'
+                    boxShadow: 'var(--shadow-sm)',
+                    display: 'flex',
+                    flexDirection: 'column'
                 }}>
-                    <Link href="/" style={{ fontWeight: 'bold', marginRight: '1rem', color: 'var(--text-primary)', textDecoration: 'none' }}>Portada</Link>
-                    <Link href="/category/espana" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 600 }}>España</Link>
-                    <Link href="/category/internacional" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 600 }}>Internacional</Link>
-                    <Link href="/category/economia" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 600 }}>Economía</Link>
-                    <Link href="/category/deportes" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 600 }}>Deportes</Link>
-                    <Link href="/category/tecnologia" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 600 }}>Tecnología</Link>
-                    <Link href="/category/cultura" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 600 }}>Cultura</Link>
+                    {/* Fuentes */}
+                    <div style={{
+                        display: 'flex', 
+                        gap: '1rem', 
+                        justifyContent: 'center', 
+                        flexWrap: 'wrap',
+                        padding: '1rem',
+                        borderBottom: '1px solid var(--bg-color)'
+                    }}>
+                        <Link href="/" style={{ fontWeight: '800', color: 'var(--text-primary)', textDecoration: 'none' }}>Portada</Link>
+                        <span style={{ color: 'var(--border-color)' }}>|</span>
+                        <Link href="/abc" style={{ fontWeight: '700', color: 'var(--text-primary)', textDecoration: 'none' }}>ABC</Link>
+                        <Link href="/elpais" style={{ fontWeight: '700', color: 'var(--text-primary)', textDecoration: 'none' }}>El País</Link>
+                        <Link href="/ideal" style={{ fontWeight: '700', color: 'var(--text-primary)', textDecoration: 'none' }}>Ideal</Link>
+                    </div>
+                    {/* Categorías Principales */}
+                    <div style={{
+                        display: 'flex', 
+                        gap: '1.25rem', 
+                        justifyContent: 'center', 
+                        flexWrap: 'wrap',
+                        padding: '0.75rem 1rem',
+                        background: 'var(--bg-color)',
+                        fontSize: '0.85rem'
+                    }}>
+                        <Link href="/category/espana" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 600 }}>España</Link>
+                        <Link href="/category/internacional" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 600 }}>Internacional</Link>
+                        <Link href="/category/economia" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 600 }}>Economía</Link>
+                        <Link href="/category/deportes" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 600 }}>Deportes</Link>
+                        <Link href="/category/tecnologia" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 600 }}>Tecnología</Link>
+                        <Link href="/category/cultura" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 600 }}>Cultura</Link>
+                    </div>
                 </nav>
                 {children}
             </body>
