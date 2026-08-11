@@ -170,6 +170,42 @@ export default function ArticlePage() {
                         </a>
                     </div>
                 </article>
+
+                <div style={{ marginTop: '2rem', textAlign: 'center' }}>
+                    <button onClick={() => router.back()} style={{
+                        color: 'var(--text-primary)',
+                        textDecoration: 'none',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem',
+                        fontSize: '0.95rem',
+                        fontWeight: 700,
+                        background: 'var(--card-bg)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '0.5rem',
+                        cursor: 'pointer',
+                        padding: '0.75rem 1.5rem',
+                        boxShadow: 'var(--shadow-sm)',
+                        transition: 'all 0.2s ease'
+                    }}
+                    onMouseOver={(e) => {
+                        e.currentTarget.style.backgroundColor = 'var(--bg-color)';
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+                    }}
+                    onMouseOut={(e) => {
+                        e.currentTarget.style.backgroundColor = 'var(--card-bg)';
+                        e.currentTarget.style.transform = 'none';
+                        e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
+                    }}
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" />
+                        </svg>
+                        Volver a noticias
+                    </button>
+                </div>
             </div>
         </div>
     );
