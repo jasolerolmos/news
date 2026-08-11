@@ -8,7 +8,7 @@ services:
       dockerfile: Dockerfile.dev
     container_name: news-aggregator-dev
     ports:
-      - "3000:3000"
+      - "3010:3010"
     volumes:
       # Hot-reload: los cambios en tu código se reflejan inmediatamente
       - .:/app
@@ -25,7 +25,7 @@ services:
   #     dockerfile: Dockerfile
   #   container_name: news-aggregator-prod
   #   ports:
-  #     - "3000:3000"
+  #     - "3010:3010"
   #   environment:
   #     - NODE_ENV=production
   #   restart: unless-stopped
