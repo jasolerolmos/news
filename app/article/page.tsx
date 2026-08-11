@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 interface Article {
@@ -12,6 +12,7 @@ interface Article {
 
 export default function ArticlePage() {
     const searchParams = useSearchParams();
+    const router = useRouter();
     const url = searchParams.get('url');
 
     const [article, setArticle] = useState<Article | null>(null);
@@ -76,20 +77,24 @@ export default function ArticlePage() {
         <div className="container">
             <div style={{ maxWidth: '800px', margin: '0 auto' }}>
                 <div style={{ marginBottom: '2rem' }}>
-                    <Link href="/" style={{
+                    <button onClick={() => router.back()} style={{
                         color: 'var(--text-secondary)',
                         textDecoration: 'none',
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '0.5rem',
                         fontSize: '0.875rem',
-                        fontWeight: 600
+                        fontWeight: 600,
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: 0
                     }}>
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
                         </svg>
                         Volver a noticias
-                    </Link>
+                    </button>
                 </div>
 
                 <article style={{

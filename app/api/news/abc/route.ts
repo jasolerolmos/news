@@ -12,14 +12,20 @@ interface NewsItem {
 function getCategoryFromUrl(url: string): string {
     try {
         const urlObj = new URL(url);
-        const segments = urlObj.pathname.split('/').filter(s => s);
-        if (segments.length > 0 && segments[0]) {
-            return segments[0].toUpperCase();
+        const segments = urlObj.pathname.split('/').filter(s => s && s.length > 2);
+        
+        if (segments.length > 0) {
+            let cat = segments[0].charAt(0).toUpperCase() + segments[0].slice(1).toLowerCase();
+            // Si hay subcategoría y no es un archivo .html u otros sufijos raros
+            if (segments.length > 1 && !segments[1].includes('.') && segments[1].length > 2) {
+                cat += ' - ' + segments[1].charAt(0).toUpperCase() + segments[1].slice(1).toLowerCase();
+            }
+            return cat;
         }
     } catch (e) {
         // ignore
     }
-    return 'GENERAL';
+    return 'General';
 }
 
 export async function GET(request: Request) {

@@ -59,8 +59,19 @@ export async function GET(request: Request) {
                 paragraphs.forEach((p) => {
                     let text = p.textContent?.trim() || '';
                     
-                    // Filter out "Escucha el artículo" paragraphs
+                    // Filter out "Escucha el artículo" paragraphs and Paywall/Subscription messages
+                    const textLower = text.toLowerCase();
                     if (/Escuchar?\s+(el|este)\s+art[ií]culo/i.test(text) && text.length < 100) {
+                        return;
+                    }
+                    
+                    const paywallPhrases = [
+                        'exclusivo para suscriptores',
+                        'disfruta de acceso ilimitado',
+                        '¿ya tienes una suscripción',
+                        'inicia sesión'
+                    ];
+                    if (paywallPhrases.some(phrase => textLower.includes(phrase)) && text.length < 150) {
                         return;
                     }
 

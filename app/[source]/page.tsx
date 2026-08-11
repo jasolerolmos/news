@@ -59,29 +59,15 @@ export default function SourcePage() {
     }, [source]);
 
     useEffect(() => {
-        if (allNews.length === 0) return; // Esperar a que la petición inicial termine
+        if (allNews.length === 0) return;
 
-        async function fetchCategoryNews() {
-            if (activeCategory === 'all') {
-                setFilteredNews(allNews);
-                return;
-            }
-
-            try {
-                setIsCategoryLoading(true);
-                // Hacemos la petición a la sección específica del periódico
-                const res = await fetch(`/api/news/${source}?section=${activeCategory.toLowerCase()}`);
-                const data = await res.json();
-                setFilteredNews(data);
-                setIsCategoryLoading(false);
-            } catch (err) {
-                console.error('Error fetching category news:', err);
-                setIsCategoryLoading(false);
-            }
+        if (activeCategory === 'all') {
+            setFilteredNews(allNews);
+        } else {
+            // Filtrado dinámico 100% coherente con lo extraído de la portada
+            setFilteredNews(allNews.filter(news => news.category === activeCategory));
         }
-
-        fetchCategoryNews();
-    }, [activeCategory, source, allNews]);
+    }, [activeCategory, allNews]);
 
     if (loading) {
         return (
@@ -153,9 +139,11 @@ export default function SourcePage() {
                                         <tr key={index}>
                                             <td className="title-cell">{item.title}</td>
                                             <td className="category-cell">
-                                                <span className="category-tag" style={{ margin: 0, color: source === 'abc' ? 'var(--accent-abc)' : source === 'ideal' ? 'var(--accent-ideal)' : 'var(--accent-elpais)' }}>
-                                                    {item.category}
-                                                </span>
+                                                <Link href={`/category/${item.category.toLowerCase()}`} style={{ textDecoration: 'none' }}>
+                                                    <span className="category-tag" style={{ margin: 0, cursor: 'pointer', color: source === 'abc' ? 'var(--accent-abc)' : source === 'ideal' ? 'var(--accent-ideal)' : 'var(--accent-elpais)' }}>
+                                                        {item.category}
+                                                    </span>
+                                                </Link>
                                             </td>
                                             <td className="action-cell">
                                                 <Link 
