@@ -1,264 +1,57 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-interface Article {
-    title: string;
-    body: string;
-    url: string;
-}
+interface Article { title: string; body: string; url: string }
 
 function extractKeywords(title: string): string {
-    const stopWords = new Set(['el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'y', 'e', 'ni', 'que', 'o', 'u', 'pero', 'a', 'ante', 'bajo', 'cabe', 'con', 'contra', 'de', 'desde', 'durante', 'en', 'entre', 'hacia', 'hasta', 'mediante', 'para', 'por', 'según', 'sin', 'so', 'sobre', 'tras', 'versus', 'vía', 'al', 'del', 'su', 'sus', 'se', 'lo', 'le', 'les', 'me', 'te', 'nos', 'os', 'es', 'son', 'ser', 'esta', 'este', 'estos', 'estas', 'ha', 'han']);
-    
-    const words = title
-        .toLowerCase()
-        .replace(/[.,:;¡!¿?"'()[\]{}]/g, '')
-        .split(/\s+/)
-        .filter(word => word.length > 3 && !stopWords.has(word));
-        
-    words.sort((a, b) => b.length - a.length);
-    
-    return words.slice(0, 2).join(' ');
+  const stop = new Set(['el','la','los','las','un','una','unos','unas','que','pero','ante','bajo','con','contra','desde','durante','entre','hasta','para','por','según','sobre','tras','del','sus','son','esta','este','estos','estas']);
+  return title.toLowerCase().replace(/[.,:;¡!¿?"'()[\]{}]/g, '').split(/\s+/).filter(word => word.length > 3 && !stop.has(word)).sort((a, b) => b.length - a.length).slice(0, 2).join(' ');
+}
+
+function ArticleContent() {
+  const params = useSearchParams();
+  const router = useRouter();
+  const url = params.get('url');
+  const [article, setArticle] = useState<Article | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const controller = new AbortController();
+    async function load() {
+      setArticle(null); setError(''); setLoading(true);
+      if (!url) { setError('Falta la dirección de la noticia.'); setLoading(false); return; }
+      try {
+        const response = await fetch(`/api/article?url=${encodeURIComponent(url)}`, { signal: controller.signal });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'No se pudo cargar el artículo.');
+        if (!controller.signal.aborted) setArticle(data);
+      } catch (err) {
+        if (!controller.signal.aborted) setError(err instanceof Error ? err.message : 'No se pudo cargar el artículo.');
+      } finally { if (!controller.signal.aborted) setLoading(false); }
+    }
+    void load();
+    return () => controller.abort();
+  }, [url]);
+
+  return <main className="news-shell" style={{ maxWidth: '860px' }}>
+    <Link className="news-item-action" href="/">← Volver a la portada</Link>
+    {loading ? <p className="news-loading" role="status">Cargando artículo…</p> : error || !article ? <div className="news-alert" role="alert">{error || 'No se pudo cargar el artículo.'}</div> : <article style={{ marginTop: '2rem', borderTop: '1px solid var(--ink)', paddingTop: '2rem' }}>
+      <p className="news-eyebrow">Lectura · Fuente externa</p>
+      <h1 style={{ fontSize: 'clamp(2.2rem, 5vw, 3.5rem)', lineHeight: 1.15 }}>{article.title || 'Artículo sin título'}</h1>
+      <p style={{ color: 'var(--muted)', margin: '1rem 0 1.75rem' }}>El texto disponible puede estar incompleto. Consulta siempre la publicación original.</p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.7rem', marginBottom: '2rem' }}>
+        <a className="news-button" href={article.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>Abrir fuente original ↗</a>
+        <button type="button" className="news-button secondary" onClick={() => router.push(`/?search=${encodeURIComponent(extractKeywords(article.title))}`)}>Buscar noticias relacionadas</button>
+      </div>
+      {article.body ? <div style={{ borderTop: '1px solid var(--line)', paddingTop: '2rem', whiteSpace: 'pre-wrap', fontFamily: 'Georgia, serif', fontSize: '1.12rem', lineHeight: 1.85, overflowWrap: 'anywhere' }}>{article.body}</div> : <p className="news-alert">No se ha encontrado texto legible. Puedes consultar la fuente original.</p>}
+    </article>}
+  </main>;
 }
 
 export default function ArticlePage() {
-    const searchParams = useSearchParams();
-    const router = useRouter();
-    const url = searchParams.get('url');
-
-    const [article, setArticle] = useState<Article | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(false);
-
-    const handleFindRelated = () => {
-        if (!article) return;
-        const keywords = extractKeywords(article.title);
-        router.push(`/?search=${encodeURIComponent(keywords)}`);
-    };
-
-    useEffect(() => {
-        if (!url) {
-            setError(true);
-            setLoading(false);
-            return;
-        }
-
-        async function fetchArticle() {
-            try {
-                setLoading(true);
-                const response = await fetch(`/api/article?url=${encodeURIComponent(url)}`);
-
-                if (!response.ok) {
-                    setError(true);
-                    setLoading(false);
-                    return;
-                }
-
-                const data = await response.json();
-                setArticle(data);
-                setLoading(false);
-            } catch (err) {
-                console.error('Error fetching article:', err);
-                setError(true);
-                setLoading(false);
-            }
-        }
-
-        fetchArticle();
-    }, [url]);
-
-    if (loading) {
-        return (
-            <div className="container">
-                <div className="loading">📰 Cargando artículo...</div>
-            </div>
-        );
-    }
-
-    if (error || !article) {
-        return (
-            <div className="container">
-                <div className="error">
-                    ⚠️ No se pudo cargar el artículo.
-                </div>
-                <div style={{ textAlign: 'center', marginTop: '2rem' }}>
-                    <Link href="/" style={{ color: 'var(--accent-elpais)', textDecoration: 'underline' }}>
-                        Volver a inicio
-                    </Link>
-                </div>
-            </div>
-        );
-    }
-
-    return (
-        <div className="container">
-            <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-                <div style={{ marginBottom: '2rem' }}>
-                    <button onClick={() => router.back()} style={{
-                        color: 'var(--text-secondary)',
-                        textDecoration: 'none',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        fontSize: '0.875rem',
-                        fontWeight: 600,
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer',
-                        padding: 0
-                    }}>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                        </svg>
-                        Volver a noticias
-                    </button>
-                </div>
-
-                <article style={{
-                    background: 'var(--card-bg)',
-                    padding: '3rem',
-                    borderRadius: '1rem',
-                    border: '1px solid var(--border-color)',
-                    boxShadow: 'var(--shadow-md)'
-                }}>
-                    <h1 style={{
-                        fontFamily: 'Merriweather, Georgia, serif',
-                        fontSize: '2rem',
-                        fontWeight: 700,
-                        lineHeight: 1.3,
-                        marginBottom: '1rem',
-                        color: 'var(--text-primary)'
-                    }}>
-                        {article.title}
-                    </h1>
-
-                    <div style={{ marginBottom: '2rem' }}>
-                        <button 
-                            onClick={handleFindRelated}
-                            style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                                padding: '0.5rem 1rem',
-                                background: 'var(--bg-color)',
-                                border: '1px solid var(--border-color)',
-                                borderRadius: '2rem',
-                                color: 'var(--text-primary)',
-                                fontSize: '0.875rem',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                transition: 'all 0.2s ease',
-                                boxShadow: 'var(--shadow-sm)'
-                            }}
-                            onMouseOver={(e) => {
-                                e.currentTarget.style.backgroundColor = 'var(--text-primary)';
-                                e.currentTarget.style.color = 'white';
-                            }}
-                            onMouseOut={(e) => {
-                                e.currentTarget.style.backgroundColor = 'var(--bg-color)';
-                                e.currentTarget.style.color = 'var(--text-primary)';
-                            }}
-                            title="Buscar noticias relacionadas en otros periódicos"
-                        >
-                            🗞️ Ver cómo lo cuentan otros periódicos
-                        </button>
-                    </div>
-
-                    {article.body ? (
-                        <div style={{
-                            fontSize: '1.1rem',
-                            lineHeight: 1.8,
-                            color: 'var(--text-primary)',
-                            whiteSpace: 'pre-wrap'
-                        }}>
-                            {article.body}
-                        </div>
-                    ) : (
-                        <div style={{ marginTop: '2rem', textAlign: 'center' }}>
-                            <p style={{ marginBottom: '1rem', color: 'var(--text-secondary)' }}>
-                                El contenido completo está disponible en la fuente original
-                            </p>
-                            <a
-                                href={url || ''}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{
-                                    display: 'inline-block',
-                                    padding: '0.75rem 1.5rem',
-                                    background: 'var(--text-primary)',
-                                    color: 'white',
-                                    borderRadius: '0.5rem',
-                                    textDecoration: 'none',
-                                    fontWeight: 600,
-                                    transition: 'all 0.2s ease'
-                                }}
-                            >
-                                Leer en sitio original →
-                            </a>
-                        </div>
-                    )}
-
-                    <div style={{
-                        marginTop: '2rem',
-                        paddingTop: '1.5rem',
-                        borderTop: '1px solid var(--border-color)',
-                        fontSize: '0.875rem',
-                        color: 'var(--text-secondary)'
-                    }}>
-                        <a
-                            href={url || ''}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                                color: 'var(--accent-elpais)',
-                                textDecoration: 'none',
-                                wordBreak: 'break-all'
-                            }}
-                        >
-                            Fuente original →
-                        </a>
-                    </div>
-                </article>
-
-                <div style={{ marginTop: '2rem', textAlign: 'center' }}>
-                    <button onClick={() => router.back()} style={{
-                        color: 'var(--text-primary)',
-                        textDecoration: 'none',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.5rem',
-                        fontSize: '0.95rem',
-                        fontWeight: 700,
-                        background: 'var(--card-bg)',
-                        border: '1px solid var(--border-color)',
-                        borderRadius: '0.5rem',
-                        cursor: 'pointer',
-                        padding: '0.75rem 1.5rem',
-                        boxShadow: 'var(--shadow-sm)',
-                        transition: 'all 0.2s ease'
-                    }}
-                    onMouseOver={(e) => {
-                        e.currentTarget.style.backgroundColor = 'var(--bg-color)';
-                        e.currentTarget.style.transform = 'translateY(-2px)';
-                        e.currentTarget.style.boxShadow = 'var(--shadow-md)';
-                    }}
-                    onMouseOut={(e) => {
-                        e.currentTarget.style.backgroundColor = 'var(--card-bg)';
-                        e.currentTarget.style.transform = 'none';
-                        e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
-                    }}
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" />
-                        </svg>
-                        Volver a noticias
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
+  return <Suspense fallback={<main className="news-shell"><p className="news-loading">Cargando artículo…</p></main>}><ArticleContent /></Suspense>;
 }
