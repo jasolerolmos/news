@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 interface NewsItem {
     title: string;
@@ -19,11 +19,19 @@ export default function Home() {
 
     const [sourceFilter, setSourceFilter] = useState('all');
     const [categoryFilter, setCategoryFilter] = useState('all');
-    const [searchTerm, setSearchTerm] = useState('');
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const initialSearch = searchParams.get('search') || '';
+    
+    const [searchTerm, setSearchTerm] = useState(initialSearch);
     const [urlInput, setUrlInput] = useState('');
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [isFiltersOpen, setIsFiltersOpen] = useState(false);
-    const router = useRouter();
+
+    useEffect(() => {
+        const querySearch = searchParams.get('search');
+        setSearchTerm(querySearch || '');
+    }, [searchParams]);
 
     const [categories, setCategories] = useState<string[]>([]);
 
@@ -45,17 +53,24 @@ export default function Home() {
         async function fetchNews() {
             try {
                 setLoading(true);
-                const [abcRes, elpaisRes, idealRes] = await Promise.all([
+                const [abcRes, elpaisRes, idealRes, granadahoyRes, xatakaRes] = await Promise.all([
                     fetch('/api/news/abc'),
                     fetch('/api/news/elpais'),
-                    fetch('/api/news/ideal')
+                    fetch('/api/news/ideal'),
+                    fetch('/api/news/granadahoy'),
+                    fetch('/api/news/xataka')
+                    // fetch('/api/news/sueddeutsche'),  // desactivado
+                    // fetch('/api/news/faz')            // desactivado
                 ]);
 
                 const abcData = await abcRes.json();
                 const elpaisData = await elpaisRes.json();
                 const idealData = await idealRes.json();
+                const granadahoyData = await granadahoyRes.json();
+                const xatakaData = await xatakaRes.json();
 
-                const combined = [...abcData, ...elpaisData, ...idealData];
+                const combined = [...abcData, ...elpaisData, ...idealData, ...granadahoyData, ...xatakaData];
+                // SZ y FAZ desactivados: ...sueddeutscheData, ...fazData
                 setAllNews(combined);
                 setFilteredNews(combined);
 
@@ -91,9 +106,11 @@ export default function Home() {
 
         // Apply search filter
         if (searchTerm) {
-            filtered = filtered.filter(item =>
-                item.title.toLowerCase().includes(searchTerm.toLowerCase())
-            );
+            const searchWords = searchTerm.toLowerCase().trim().split(/\s+/).filter(w => w.length > 0);
+            filtered = filtered.filter(item => {
+                const titleLower = item.title.toLowerCase();
+                return searchWords.every(word => titleLower.includes(word));
+            });
         }
 
         setFilteredNews(filtered);
@@ -225,6 +242,19 @@ export default function Home() {
                     >
                         Ideal
                     </button>
+                    <button
+                        className={`filter-btn ${sourceFilter === 'GRANADAHOY' ? 'active' : ''}`}
+                        onClick={() => setSourceFilter('GRANADAHOY')}
+                    >
+                        Granada Hoy
+                    </button>
+                    <button
+                        className={`filter-btn ${sourceFilter === 'XATAKA' ? 'active' : ''}`}
+                        onClick={() => setSourceFilter('XATAKA')}
+                    >
+                        Xataka
+                    </button>
+                    {/* Filtros SZ y FAZ desactivados temporalmente */}
                 </div>
                 <div className="filter-divider"></div>
                 <div className="filter-section">
@@ -296,7 +326,7 @@ export default function Home() {
                         >
                             <div className="card-content">
                                 <span className={`source-badge ${item.source.toLowerCase()}`}>
-                                    {item.source === 'ABC' ? 'ABC' : item.source === 'IDEAL' ? 'IDEAL' : 'EL PAÍS'}
+                                    {item.source === 'ABC' ? 'ABC' : item.source === 'IDEAL' ? 'IDEAL' : item.source === 'GRANADAHOY' ? 'GRANADA HOY' : item.source === 'XATAKA' ? 'XATAKA' : 'EL PAÍS'}
                                 </span>
                                 <Link href={`/category/${item.category.toLowerCase()}`} style={{ textDecoration: 'none' }}>
                                     <span className="category-tag" style={{ cursor: 'pointer' }}>{item.category}</span>

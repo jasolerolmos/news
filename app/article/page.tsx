@@ -10,6 +10,20 @@ interface Article {
     url: string;
 }
 
+function extractKeywords(title: string): string {
+    const stopWords = new Set(['el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'y', 'e', 'ni', 'que', 'o', 'u', 'pero', 'a', 'ante', 'bajo', 'cabe', 'con', 'contra', 'de', 'desde', 'durante', 'en', 'entre', 'hacia', 'hasta', 'mediante', 'para', 'por', 'según', 'sin', 'so', 'sobre', 'tras', 'versus', 'vía', 'al', 'del', 'su', 'sus', 'se', 'lo', 'le', 'les', 'me', 'te', 'nos', 'os', 'es', 'son', 'ser', 'esta', 'este', 'estos', 'estas', 'ha', 'han']);
+    
+    const words = title
+        .toLowerCase()
+        .replace(/[.,:;¡!¿?"'()[\]{}]/g, '')
+        .split(/\s+/)
+        .filter(word => word.length > 3 && !stopWords.has(word));
+        
+    words.sort((a, b) => b.length - a.length);
+    
+    return words.slice(0, 2).join(' ');
+}
+
 export default function ArticlePage() {
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -18,6 +32,12 @@ export default function ArticlePage() {
     const [article, setArticle] = useState<Article | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
+
+    const handleFindRelated = () => {
+        if (!article) return;
+        const keywords = extractKeywords(article.title);
+        router.push(`/?search=${encodeURIComponent(keywords)}`);
+    };
 
     useEffect(() => {
         if (!url) {
@@ -109,11 +129,43 @@ export default function ArticlePage() {
                         fontSize: '2rem',
                         fontWeight: 700,
                         lineHeight: 1.3,
-                        marginBottom: '1.5rem',
+                        marginBottom: '1rem',
                         color: 'var(--text-primary)'
                     }}>
                         {article.title}
                     </h1>
+
+                    <div style={{ marginBottom: '2rem' }}>
+                        <button 
+                            onClick={handleFindRelated}
+                            style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                padding: '0.5rem 1rem',
+                                background: 'var(--bg-color)',
+                                border: '1px solid var(--border-color)',
+                                borderRadius: '2rem',
+                                color: 'var(--text-primary)',
+                                fontSize: '0.875rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                boxShadow: 'var(--shadow-sm)'
+                            }}
+                            onMouseOver={(e) => {
+                                e.currentTarget.style.backgroundColor = 'var(--text-primary)';
+                                e.currentTarget.style.color = 'white';
+                            }}
+                            onMouseOut={(e) => {
+                                e.currentTarget.style.backgroundColor = 'var(--bg-color)';
+                                e.currentTarget.style.color = 'var(--text-primary)';
+                            }}
+                            title="Buscar noticias relacionadas en otros periódicos"
+                        >
+                            🗞️ Ver cómo lo cuentan otros periódicos
+                        </button>
+                    </div>
 
                     {article.body ? (
                         <div style={{

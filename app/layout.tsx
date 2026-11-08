@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
     title: 'Noticias',
-    description: 'ABC, El País e Ideal en un solo lugar',
+    description: 'ABC, El País, Ideal, Granada Hoy y Xataka en un solo lugar',
 }
 
 export default function RootLayout({
@@ -44,6 +44,10 @@ export default function RootLayout({
                         <Link href="/abc" style={{ fontWeight: '700', color: 'var(--text-primary)', textDecoration: 'none' }}>ABC</Link>
                         <Link href="/elpais" style={{ fontWeight: '700', color: 'var(--text-primary)', textDecoration: 'none' }}>El País</Link>
                         <Link href="/ideal" style={{ fontWeight: '700', color: 'var(--text-primary)', textDecoration: 'none' }}>Ideal</Link>
+                        <Link href="/granadahoy" style={{ fontWeight: '700', color: 'var(--text-primary)', textDecoration: 'none' }}>Granada Hoy</Link>
+                        <span style={{ color: 'var(--border-color)' }}>|</span>
+                        <Link href="/xataka" style={{ fontWeight: '700', color: 'var(--text-primary)', textDecoration: 'none' }}>Xataka</Link>
+                        {/* SZ y FAZ desactivados temporalmente */}
                     </div>
                     {/* Categorías Principales */}
                     <div style={{

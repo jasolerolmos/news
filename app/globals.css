@@ -6,6 +6,10 @@
   --accent-abc: #000000;
   --accent-elpais: #1976d2;
   --accent-ideal: #006e51;
+  --accent-granadahoy: #c61118;
+  --accent-sueddeutsche: #7c1f38;
+  --accent-faz: #1f3a52;
+  --accent-xataka: #e93a3a;
   --border-color: #e5e7eb;
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
@@ -286,6 +290,22 @@ h1 {
   border-color: var(--accent-ideal);
 }
 
+.news-card[data-source="GRANADAHOY"]:hover {
+  border-color: var(--accent-granadahoy);
+}
+
+.news-card[data-source="SZ"]:hover {
+  border-color: var(--accent-sueddeutsche);
+}
+
+.news-card[data-source="FAZ"]:hover {
+  border-color: var(--accent-faz);
+}
+
+.news-card[data-source="XATAKA"]:hover {
+  border-color: var(--accent-xataka);
+}
+
 .card-content {
   padding: 1.25rem;
   flex-grow: 1;
@@ -320,6 +340,22 @@ h1 {
   background: rgba(0, 110, 81, 0.9);
 }
 
+.source-badge.granadahoy {
+  background: rgba(198, 17, 24, 0.9);
+}
+
+.source-badge.sz {
+  background: rgba(124, 31, 56, 0.9);
+}
+
+.source-badge.faz {
+  background: rgba(31, 58, 82, 0.9);
+}
+
+.source-badge.xataka {
+  background: rgba(233, 58, 58, 0.9);
+}
+
 .category-tag {
   display: inline-block;
   font-size: 0.7rem;
@@ -340,6 +376,22 @@ h1 {
 
 .news-card[data-source="IDEAL"] .category-tag {
   color: var(--accent-ideal);
+}
+
+.news-card[data-source="GRANADAHOY"] .category-tag {
+  color: var(--accent-granadahoy);
+}
+
+.news-card[data-source="SZ"] .category-tag {
+  color: var(--accent-sueddeutsche);
+}
+
+.news-card[data-source="FAZ"] .category-tag {
+  color: var(--accent-faz);
+}
+
+.news-card[data-source="XATAKA"] .category-tag {
+  color: var(--accent-xataka);
 }
 
 .news-title {
@@ -392,6 +444,22 @@ h1 {
 
 .news-card[data-source="IDEAL"] .read-more {
   color: var(--accent-ideal);
+}
+
+.news-card[data-source="GRANADAHOY"] .read-more {
+  color: var(--accent-granadahoy);
+}
+
+.news-card[data-source="SZ"] .read-more {
+  color: var(--accent-sueddeutsche);
+}
+
+.news-card[data-source="FAZ"] .read-more {
+  color: var(--accent-faz);
+}
+
+.news-card[data-source="XATAKA"] .read-more {
+  color: var(--accent-xataka);
 }
 
 .read-more svg {
