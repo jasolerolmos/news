@@ -31,7 +31,7 @@ function HomeContent() {
     const controller = new AbortController();
     async function load() {
       setLoading(true);
-      const results = await Promise.all(SOURCES.map(async (item) => {
+      const results = await Promise.all(SOURCES.map(async item => {
         try {
           const response = await fetch(`/api/news/${item.id}`, { signal: controller.signal });
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -66,27 +66,27 @@ function HomeContent() {
   function resetFilters() { setSearch(''); setSource('all'); setCategory('all'); }
 
   return (
-    <main className="news-shell">
-      <div className="news-intro">
-        <div><p className="news-eyebrow">Tu lectura diaria · Una sola portada</p><h1>La actualidad,<br />a tu manera.</h1><p>Descubre los titulares de distintos medios, encuentra los temas que te interesan y lee con más perspectiva.</p></div>
-        <div className="news-intro-meta"><strong>{loading ? '—' : items.length}</strong> titulares disponibles</div>
+    <main className="compact-page">
+      <h1 className="compact-sr-only">Noticias</h1>
+      <div className="compact-controls" aria-label="Filtros de noticias">
+        <div className="compact-field compact-search"><label htmlFor="news-search">Buscar</label><input id="news-search" className="compact-input" type="search" placeholder="Buscar en los titulares" value={search} onChange={event => setSearch(event.target.value)} /></div>
+        <div className="compact-field"><label htmlFor="source-filter">Medio</label><select id="source-filter" className="compact-select" value={source} onChange={event => setSource(event.target.value)}><option value="all">Todos</option>{SOURCES.map(item => <option key={item.id} value={item.code}>{item.label}</option>)}</select></div>
+        <div className="compact-field"><label htmlFor="category-filter">Categoría</label><select id="category-filter" className="compact-select" value={category} onChange={event => setCategory(event.target.value)}><option value="all">Todas</option>{categories.map(item => <option key={item} value={item}>{item}</option>)}</select></div>
+        <button type="button" className="compact-button" onClick={resetFilters}>Limpiar</button>
       </div>
-      <div className="news-toolbar">
-        <div className="news-field"><label htmlFor="news-search">Buscar en los titulares</label><input id="news-search" className="news-input" type="search" placeholder="Por ejemplo: ciencia, economía…" value={search} onChange={event => setSearch(event.target.value)} /></div>
-        <div className="news-field"><label htmlFor="article-url">Leer una noticia por URL</label><form className="news-url-form" onSubmit={submitUrl}><input id="article-url" className="news-input" type="url" placeholder="https://…" value={url} onChange={event => setUrl(event.target.value)} required /><button className="news-button" type="submit">Abrir noticia →</button></form><small style={{ color: 'var(--muted)' }}>Solo enlaces HTTPS de medios compatibles.</small></div>
+      <div className="compact-tools">
+        <details><summary>Leer una URL</summary><form className="compact-url-form" onSubmit={submitUrl}><label htmlFor="article-url" className="compact-sr-only">URL de la noticia</label><input id="article-url" className="compact-input" type="url" placeholder="https://…" value={url} onChange={event => setUrl(event.target.value)} required /><button className="compact-button" type="submit">Abrir</button></form><p style={{ marginTop: '.4rem' }}>Solo enlaces HTTPS de medios compatibles.</p></details>
+        <span className="compact-count" aria-live="polite">{loading ? 'Cargando…' : `${filtered.length} noticias`}</span>
       </div>
-      <div className="news-filters">
-        <div><label htmlFor="source-filter">Medio</label><select id="source-filter" className="news-select" value={source} onChange={event => setSource(event.target.value)}><option value="all">Todos los medios</option>{SOURCES.map(item => <option key={item.id} value={item.code}>{item.label}</option>)}</select></div>
-        <div><label htmlFor="category-filter">Categoría</label><select id="category-filter" className="news-select" value={category} onChange={event => setCategory(event.target.value)}><option value="all">Todas las categorías</option>{categories.map(item => <option key={item} value={item}>{item}</option>)}</select></div>
-        <button type="button" className="news-button secondary" onClick={resetFilters}>Limpiar filtros</button>
-      </div>
-      <div className="news-results-head"><h2>Últimos titulares</h2><span aria-live="polite">{loading ? 'Actualizando…' : `${filtered.length} noticias mostradas`}</span></div>
-      {!loading && (failed.length > 0 || empty.length > 0) && <div className="news-alert" role="status">{failed.length > 0 && <p>No se pudieron cargar: {failed.join(', ')}.</p>}{empty.length > 0 && <p>Sin titulares detectados: {empty.join(', ')}. El medio puede haber cambiado su página o no tener resultados.</p>}<button type="button" className="news-button secondary" style={{ marginTop: '.6rem' }} onClick={() => setRevision(value => value + 1)}>Reintentar</button></div>}
-      {loading ? <div className="news-loading" role="status">Consultando las fuentes…</div> : <div className="news-list">{filtered.length === 0 ? <div className="news-empty">No hay titulares para mostrar. Prueba otros filtros o vuelve a intentarlo.</div> : filtered.map((item, index) => <article className="news-item" key={`${item.source}-${item.url}-${index}`}><div className="news-item-meta"><span className="news-item-source">{SOURCES.find(s => s.code === item.source)?.label || item.source}</span><span aria-hidden="true">/</span><span>{item.category}</span></div><h3><Link href={`/article?url=${encodeURIComponent(item.url)}`}>{item.title}</Link></h3><Link className="news-item-action" href={`/article?url=${encodeURIComponent(item.url)}`}>Leer noticia →</Link></article>)}</div>}
+      {!loading && (failed.length > 0 || empty.length > 0) && <div className="compact-feedback" role="status">{failed.length > 0 && <p>No se pudieron cargar: {failed.join(', ')}.</p>}{empty.length > 0 && <p>Sin titulares detectados: {empty.join(', ')}.</p>}<button type="button" className="compact-button" onClick={() => setRevision(value => value + 1)}>Reintentar</button></div>}
+      {loading ? <div className="compact-loading" role="status">Consultando las fuentes…</div> : <section className="compact-grid" aria-label="Titulares">{filtered.length === 0 ? <p className="compact-empty">No hay noticias con los filtros seleccionados.</p> : filtered.map((item, index) => {
+        const outlet = SOURCES.find(s => s.code === item.source);
+        return <article className="compact-item" key={`${item.source}-${item.url}-${index}`}><div className="compact-meta">{outlet ? <Link className="compact-source" href={`/${outlet.id}`}>{outlet.label}</Link> : <span className="compact-source">{item.source}</span>}<span aria-hidden="true">·</span><span>{item.category}</span></div><h2><Link href={`/article?url=${encodeURIComponent(item.url)}`}>{item.title}</Link></h2></article>;
+      })}</section>}
     </main>
   );
 }
 
 export default function Home() {
-  return <Suspense fallback={<main className="news-shell"><div className="news-loading">Cargando portada…</div></main>}><HomeContent /></Suspense>;
+  return <Suspense fallback={<main className="compact-page"><div className="compact-loading">Cargando noticias…</div></main>}><HomeContent /></Suspense>;
 }
