@@ -16,6 +16,7 @@ export interface NewsView {
   source: string;
   category: string;
   search: string;
+  querySearch: string | null;
   scrollY: number;
 }
 export interface NewsSession extends NewsView {
@@ -32,7 +33,7 @@ const isSourceId = (value: unknown): value is SourceId => SOURCES.some(source =>
 const sourceIds = (value: unknown): SourceId[] => Array.isArray(value) ? Array.from(new Set(value.filter(isSourceId))) : [];
 
 export function defaultSession(): NewsSession {
-  return { version: 1, cache: {}, selected: ['abc', 'elpais'], loaded: [], source: 'all', category: 'all', search: '', scrollY: 0 };
+  return { version: 1, cache: {}, selected: ['abc', 'elpais'], loaded: [], source: 'all', category: 'all', search: '', querySearch: null, scrollY: 0 };
 }
 
 function isNewsItem(value: unknown): value is NewsItem {
@@ -46,9 +47,10 @@ export function decodeSession(raw: string): NewsSession {
   const result = defaultSession();
   result.selected = sourceIds(value.selected);
   result.loaded = sourceIds(value.loaded);
-  result.source = typeof value.source === 'string' && (value.source === 'all' || SOURCES.some(source => source.code === value.source)) ? value.source : 'all';
+  result.source = typeof value.source === 'string' && (value.source === 'all' || SOURCES.some(source => source.code === value.source && result.loaded.includes(source.id))) ? value.source : 'all';
   result.category = typeof value.category === 'string' ? value.category : 'all';
   result.search = typeof value.search === 'string' ? value.search : '';
+  result.querySearch = typeof value.querySearch === 'string' ? value.querySearch : null;
   result.scrollY = typeof value.scrollY === 'number' && Number.isFinite(value.scrollY) && value.scrollY >= 0 ? value.scrollY : 0;
   if (isObject(value.cache)) {
     for (const { id, code } of SOURCES) {
@@ -80,7 +82,8 @@ function persist() {
 }
 
 export function saveView(view: NewsView) {
-  memory = { ...getSession(), ...view };
+  const { selected, loaded, source, category, search, querySearch, scrollY } = view;
+  memory = { ...getSession(), selected, loaded, source, category, search, querySearch, scrollY };
   persist();
 }
 export function hasStorageError() { return storageFailed; }
