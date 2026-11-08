@@ -30,8 +30,8 @@ export default function SourcePage() {
         async function fetchInitialNews() {
             try {
                 setLoading(true);
-                // Validamos que el source sea abc, elpais, ideal, granadahoy, xataka, sueddeutsche o faz
-                if (source !== 'abc' && source !== 'elpais' && source !== 'ideal' && source !== 'granadahoy' && source !== 'xataka' && source !== 'sueddeutsche' && source !== 'faz') {
+                // Validamos que el source sea abc, elpais, ideal, granadahoy, diariodemallorca, xataka, sueddeutsche o faz
+                if (source !== 'abc' && source !== 'elpais' && source !== 'ideal' && source !== 'granadahoy' && source !== 'diariodemallorca' && source !== 'xataka' && source !== 'sueddeutsche' && source !== 'faz') {
                     throw new Error('Fuente no válida');
                 }
 
@@ -80,7 +80,7 @@ export default function SourcePage() {
     if (error) {
         return (
             <div className="container">
-                <div className="error">⚠️ No se pudieron cargar las noticias de este periódico. Verifica que la URL sea correcta (/abc, /elpais, /ideal, /granadahoy, /sueddeutsche o /faz).</div>
+                <div className="error">⚠️ No se pudieron cargar las noticias de este periódico. Verifica que la URL sea correcta (/abc, /elpais, /ideal, /granadahoy, /diariodemallorca o /xataka).</div>
             </div>
         );
     }
@@ -88,8 +88,8 @@ export default function SourcePage() {
     return (
         <div className="container">
             <header>
-                <h1>{source === 'abc' ? 'ABC' : source === 'ideal' ? 'Ideal' : source === 'granadahoy' ? 'Granada Hoy' : source === 'xataka' ? 'Xataka' : source === 'sueddeutsche' ? 'Süddeutsche Zeitung' : source === 'faz' ? 'FAZ' : 'El País'}</h1>
-                <p className="subtitle">Todas las noticias de {source === 'abc' ? 'ABC' : source === 'ideal' ? 'Ideal' : source === 'granadahoy' ? 'Granada Hoy' : source === 'xataka' ? 'Xataka' : source === 'sueddeutsche' ? 'Süddeutsche Zeitung' : source === 'faz' ? 'FAZ' : 'El País'}</p>
+                <h1>{source === 'abc' ? 'ABC' : source === 'ideal' ? 'Ideal' : source === 'granadahoy' ? 'Granada Hoy' : source === 'diariodemallorca' ? 'Diario de Mallorca' : source === 'xataka' ? 'Xataka' : source === 'sueddeutsche' ? 'Süddeutsche Zeitung' : source === 'faz' ? 'FAZ' : 'El País'}</h1>
+                <p className="subtitle">Todas las noticias de {source === 'abc' ? 'ABC' : source === 'ideal' ? 'Ideal' : source === 'granadahoy' ? 'Granada Hoy' : source === 'diariodemallorca' ? 'Diario de Mallorca' : source === 'xataka' ? 'Xataka' : source === 'sueddeutsche' ? 'Süddeutsche Zeitung' : source === 'faz' ? 'FAZ' : 'El País'}</p>
                 <div className="stats">📰 {filteredNews.length} noticias mostradas</div>
             </header>
 
@@ -140,7 +140,7 @@ export default function SourcePage() {
                                             <td className="title-cell">{item.title}</td>
                                             <td className="category-cell">
                                                 <Link href={`/category/${item.category.toLowerCase()}`} style={{ textDecoration: 'none' }}>
-                                                    <span className="category-tag" style={{ margin: 0, cursor: 'pointer', color: source === 'abc' ? 'var(--accent-abc)' : source === 'ideal' ? 'var(--accent-ideal)' : source === 'granadahoy' ? 'var(--accent-granadahoy)' : source === 'xataka' ? 'var(--accent-xataka)' : source === 'sueddeutsche' ? 'var(--accent-sueddeutsche)' : source === 'faz' ? 'var(--accent-faz)' : 'var(--accent-elpais)' }}>
+                                                    <span className="category-tag" style={{ margin: 0, cursor: 'pointer', color: source === 'abc' ? 'var(--accent-abc)' : source === 'ideal' ? 'var(--accent-ideal)' : source === 'granadahoy' ? 'var(--accent-granadahoy)' : source === 'diariodemallorca' ? 'var(--accent-diariodemallorca)' : source === 'xataka' ? 'var(--accent-xataka)' : source === 'sueddeutsche' ? 'var(--accent-sueddeutsche)' : source === 'faz' ? 'var(--accent-faz)' : 'var(--accent-elpais)' }}>
                                                         {item.category}
                                                     </span>
                                                 </Link>

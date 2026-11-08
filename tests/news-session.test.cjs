@@ -137,11 +137,11 @@ test('corrupt storage, wrong-source news and future timestamps fail safely', asy
   assert.equal(decoded.cache.abc, undefined);
 });
 
-test('empty successful sources are cached and all seven outlets are exposed', async () => {
+test('empty successful sources are cached and all eight outlets are exposed', async () => {
   const { api } = boot(); const calls = [];
   await api.loadSources(['faz'], false, fakeFetch(calls, { faz: [] }));
   await api.loadSources(['faz'], false, fakeFetch(calls, { faz: [] }));
   assert.equal(calls.length, 1);
-  assert.equal(api.SOURCES.length, 7);
+  assert.equal(api.SOURCES.length, 8);
   assert.equal(api.SOURCES.filter(source => source.experimental).length, 2);
 });

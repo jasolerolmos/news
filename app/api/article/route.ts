@@ -10,6 +10,7 @@ export const runtime = 'nodejs';
 const allowedHosts = new Set([
   'abc.es', 'www.abc.es', 'elpais.com', 'www.elpais.com',
   'ideal.es', 'www.ideal.es', 'granadahoy.com', 'www.granadahoy.com',
+  'diariodemallorca.es', 'www.diariodemallorca.es',
   'xataka.com', 'www.xataka.com', 'faz.net', 'www.faz.net',
   'sueddeutsche.de', 'www.sueddeutsche.de',
 ]);
@@ -66,8 +67,8 @@ export async function GET(request: Request) {
       timeout: 10000,
       responseType: 'text',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; NewsAggregator/1.0)',
-        Accept: 'text/html,application/xhtml+xml',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
       },
     });

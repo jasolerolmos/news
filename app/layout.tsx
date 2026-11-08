@@ -6,7 +6,7 @@ import './compact.css';
 
 export const metadata: Metadata = {
   title: 'Noticias',
-  description: 'Actualidad de ABC, El País, Ideal, Granada Hoy y Xataka.',
+  description: 'Actualidad de ABC, El País, Ideal, Granada Hoy, Diario de Mallorca y Xataka.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

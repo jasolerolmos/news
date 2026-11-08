@@ -4,6 +4,7 @@ export const SOURCES = [
   { id: 'elpais', code: 'ELPAIS', label: 'El País', experimental: false },
   { id: 'ideal', code: 'IDEAL', label: 'Ideal', experimental: false },
   { id: 'granadahoy', code: 'GRANADAHOY', label: 'Granada Hoy', experimental: false },
+  { id: 'diariodemallorca', code: 'DIARIODEMALLORCA', label: 'Diario de Mallorca', experimental: false },
   { id: 'xataka', code: 'XATAKA', label: 'Xataka', experimental: false },
   { id: 'faz', code: 'FAZ', label: 'FAZ', experimental: true },
   { id: 'sueddeutsche', code: 'SZ', label: 'Süddeutsche', experimental: true },

@@ -9,6 +9,7 @@
   --accent-granadahoy: #c61118;
   --accent-sueddeutsche: #7c1f38;
   --accent-faz: #1f3a52;
+  --accent-diariodemallorca: #004b87;
   --accent-xataka: #e93a3a;
   --border-color: #e5e7eb;
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
@@ -302,6 +303,10 @@ h1 {
   border-color: var(--accent-faz);
 }
 
+.news-card[data-source="DIARIODEMALLORCA"]:hover {
+  border-color: var(--accent-diariodemallorca);
+}
+
 .news-card[data-source="XATAKA"]:hover {
   border-color: var(--accent-xataka);
 }
@@ -352,6 +357,10 @@ h1 {
   background: rgba(31, 58, 82, 0.9);
 }
 
+.source-badge.diariodemallorca {
+  background: rgba(0, 75, 135, 0.9);
+}
+
 .source-badge.xataka {
   background: rgba(233, 58, 58, 0.9);
 }
@@ -388,6 +397,10 @@ h1 {
 
 .news-card[data-source="FAZ"] .category-tag {
   color: var(--accent-faz);
+}
+
+.news-card[data-source="DIARIODEMALLORCA"] .category-tag {
+  color: var(--accent-diariodemallorca);
 }
 
 .news-card[data-source="XATAKA"] .category-tag {
@@ -456,6 +469,10 @@ h1 {
 
 .news-card[data-source="FAZ"] .read-more {
   color: var(--accent-faz);
+}
+
+.news-card[data-source="DIARIODEMALLORCA"] .read-more {
+  color: var(--accent-diariodemallorca);
 }
 
 .news-card[data-source="XATAKA"] .read-more {
