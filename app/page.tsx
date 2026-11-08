@@ -2,6 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import NewsToolbar from './news-toolbar';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { SOURCES, defaultSession, getSession, saveView, hasStorageError, isFresh, loadSources } from './news-session';
 import type { CacheEntry, NewsView, SourceId } from './news-session';
@@ -129,9 +130,6 @@ function HomeContent() {
   const changed = view.selected.length !== view.loaded.length || view.selected.some(id => !view.loaded.includes(id));
   const stale = view.loaded.filter(id => cache[id]?.items.length && !isFresh(cache[id]));
 
-  function toggle(id: SourceId) {
-    setView(previous => ({ ...previous, selected: previous.selected.includes(id) ? previous.selected.filter(value => value !== id) : SOURCES.filter(source => source.id === id || previous.selected.includes(source.id)).map(source => source.id) }));
-  }
   function submitUrl(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (url.trim()) { remember(); router.push(`/article?url=${encodeURIComponent(url.trim())}`); }
@@ -140,25 +138,14 @@ function HomeContent() {
   return (
     <main className="compact-page">
       <h1 className="compact-sr-only">Noticias</h1>
-      <fieldset disabled={!ready || loading} style={{ border: 0, padding: 0, margin: '0 0 1rem', minWidth: 0 }}>
-        <legend className="compact-sr-only">Medios que quieres cargar</legend>
-        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '.65rem 1rem' }}>
-          {SOURCES.map(source => <label key={source.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '.4rem', fontSize: '.85rem', cursor: 'pointer' }}><input type="checkbox" checked={view.selected.includes(source.id)} onChange={() => toggle(source.id)} style={{ accentColor: '#376452' }} />{source.label}{source.experimental && <small style={{ color: '#737d76' }}>(experimental)</small>}</label>)}
-          <button type="button" className="compact-button" disabled={!ready || loading || !view.selected.length} onClick={() => { setView(previous => ({ ...previous, source: 'all', category: 'all', scrollY: 0 })); void run([...view.selected]); }}>Cargar</button>
-          <button type="button" className="compact-button" disabled={!ready || loading || !view.loaded.length} title="Volver a descargar los medios que se están mostrando" onClick={() => void run([...view.loaded], true)}>Actualizar cargados</button>
-        </div>
-      </fieldset>
-      {ready && changed && <p style={{ fontSize: '.78rem', color: '#606b65', marginBottom: '.85rem' }}>Pulsa Cargar para aplicar la selección de medios.</p>}
-      <div className="compact-controls" aria-label="Filtros de noticias">
-        <div className="compact-field compact-search"><label htmlFor="news-search">Buscar</label><input id="news-search" className="compact-input" type="search" placeholder="Buscar en los titulares" value={view.search} onChange={event => setView(previous => ({ ...previous, search: event.target.value, scrollY: 0 }))} /></div>
-        <div className="compact-field"><label htmlFor="source-filter">Medio cargado</label><select id="source-filter" className="compact-select" value={view.source} onChange={event => setView(previous => ({ ...previous, source: event.target.value, scrollY: 0 }))}><option value="all">Todos</option>{SOURCES.filter(source => view.loaded.includes(source.id)).map(source => <option key={source.id} value={source.code}>{source.label}</option>)}</select></div>
-        <div className="compact-field"><label htmlFor="category-filter">Categoría</label><select id="category-filter" className="compact-select" value={view.category} onChange={event => setView(previous => ({ ...previous, category: event.target.value, scrollY: 0 }))}><option value="all">Todas</option>{view.category !== 'all' && !categories.includes(view.category) && <option value={view.category}>{view.category} (sin resultados)</option>}{categories.map(category => <option key={category} value={category}>{category}</option>)}</select></div>
-        <button type="button" className="compact-button" onClick={() => setView(previous => ({ ...previous, search: '', source: 'all', category: 'all', scrollY: 0 }))}>Limpiar</button>
-      </div>
-      <div className="compact-tools">
-        <details><summary>Leer una URL</summary><form className="compact-url-form" onSubmit={submitUrl}><label htmlFor="article-url" className="compact-sr-only">URL de la noticia</label><input id="article-url" className="compact-input" type="url" placeholder="https://…" value={url} onChange={event => setUrl(event.target.value)} required /><button className="compact-button" type="submit">Abrir</button></form></details>
-        <span className="compact-count" aria-live="polite">{loading ? 'Actualizando… ' : ''}{ready ? `${filtered.length} noticias` : 'Restaurando…'}</span>
-      </div>
+      <NewsToolbar
+        view={view} setView={setView} cache={cache} categories={categories}
+        count={filtered.length} ready={ready} loading={loading}
+        failed={failed} empty={empty} changed={changed}
+        url={url} setUrl={setUrl} onSubmitUrl={submitUrl}
+        onLoad={() => { setView(previous => ({ ...previous, source: 'all', category: 'all', scrollY: 0 })); void run([...view.selected]); }}
+        onRefresh={() => void run([...view.loaded], true)}
+      />
       {storageWarning && <p className="compact-feedback" role="status">El navegador no permite guardar la sesión. Se conserva en memoria, pero podría perderse al recargar la pestaña.</p>}
       {(failed.length > 0 || empty.length > 0 || stale.length > 0) && <div className="compact-feedback" role="status">{failed.length > 0 && <p>No se pudieron cargar: {failed.map(label).join(', ')}.</p>}{empty.length > 0 && <p>Sin titulares nuevos detectados: {empty.map(label).join(', ')}.</p>}{stale.length > 0 && <p>Se conservan titulares anteriores de {stale.map(label).join(', ')}. {loading ? 'Actualizando…' : 'Puedes reintentar la actualización.'}</p>}<button type="button" className="compact-button" disabled={loading} onClick={() => void run([...view.loaded], true)}>Reintentar</button></div>}
       <section className="compact-grid" aria-label="Titulares" aria-busy={loading}>
@@ -167,7 +154,6 @@ function HomeContent() {
           return <article className="compact-item" key={`${item.source}-${item.url}-${index}`}><div className="compact-meta"><span className="compact-source">{outlet?.label || item.source}</span><span aria-hidden="true">·</span><span>{item.category}</span></div><h2><Link href={`/article?url=${encodeURIComponent(item.url)}`} prefetch={false} onClick={remember}>{item.title}</Link></h2></article>;
         })}
       </section>
-      {ready && view.loaded.length > 0 && <details style={{ fontSize: '.75rem', color: '#606b65', marginTop: '1rem' }}><summary>Estado de los medios · caché de 30 min</summary>{view.loaded.map(id => <p key={id}>{label(id)}: {cache[id] ? `cargado a las ${new Date(cache[id]!.fetchedAt).toLocaleTimeString('es')}` : 'sin datos guardados'}</p>)}</details>}
     </main>
   );
 }
