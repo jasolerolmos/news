@@ -46,18 +46,23 @@ function HomeContent() {
 
   useEffect(() => {
     const restored = getSession();
+    const newQuery = query !== null && query !== restored.querySearch;
     const next: NewsView = {
       selected: [...restored.selected], loaded: [...restored.loaded],
-      source: query !== null ? 'all' : restored.source,
-      category: query !== null ? 'all' : restored.category,
-      search: query !== null ? query : restored.search,
-      scrollY: query !== null ? 0 : restored.scrollY,
+      source: newQuery ? 'all' : restored.source,
+      category: newQuery ? 'all' : restored.category,
+      search: newQuery ? query : restored.search,
+      querySearch: query,
+      scrollY: newQuery ? 0 : restored.scrollY,
     };
     current.current = next;
     scrollTarget.current = next.scrollY;
     setView(next);
     setCache({ ...restored.cache });
     setReady(true);
+    setLoading(false);
+    setFailed([]);
+    setEmpty(next.loaded.filter(id => restored.cache[id]?.items.length === 0));
     setStorageWarning(hasStorageError());
     // No initial fetch without a previously loaded selection.
     if (next.loaded.some(id => !isFresh(restored.cache[id]))) void run(next.loaded);
@@ -81,7 +86,7 @@ function HomeContent() {
       });
     });
     return () => { cancelAnimationFrame(first); cancelAnimationFrame(second); };
-  }, [ready]);
+  }, [ready, query]);
 
   const remember = useCallback(() => {
     saveView({ ...current.current, scrollY: scrollTarget.current ?? window.scrollY });
@@ -155,7 +160,7 @@ function HomeContent() {
         <span className="compact-count" aria-live="polite">{loading ? 'Actualizando… ' : ''}{ready ? `${filtered.length} noticias` : 'Restaurando…'}</span>
       </div>
       {storageWarning && <p className="compact-feedback" role="status">El navegador no permite guardar la sesión. Se conserva en memoria, pero podría perderse al recargar la pestaña.</p>}
-      {(failed.length > 0 || empty.length > 0 || stale.length > 0) && <div className="compact-feedback" role="status">{failed.length > 0 && <p>No se pudieron cargar: {failed.map(label).join(', ')}.</p>}{empty.length > 0 && <p>Sin titulares nuevos detectados: {empty.map(label).join(', ')}.</p>}{stale.length > 0 && <p>Se muestran titulares anteriores de {stale.map(label).join(', ')} mientras se intenta actualizarlos.</p>}<button type="button" className="compact-button" disabled={loading} onClick={() => void run([...view.loaded])}>Reintentar</button></div>}
+      {(failed.length > 0 || empty.length > 0 || stale.length > 0) && <div className="compact-feedback" role="status">{failed.length > 0 && <p>No se pudieron cargar: {failed.map(label).join(', ')}.</p>}{empty.length > 0 && <p>Sin titulares nuevos detectados: {empty.map(label).join(', ')}.</p>}{stale.length > 0 && <p>Se conservan titulares anteriores de {stale.map(label).join(', ')}. {loading ? 'Actualizando…' : 'Puedes reintentar la actualización.'}</p>}<button type="button" className="compact-button" disabled={loading} onClick={() => void run([...view.loaded], true)}>Reintentar</button></div>}
       <section className="compact-grid" aria-label="Titulares" aria-busy={loading}>
         {!ready ? <p className="compact-loading">Restaurando sesión…</p> : !view.loaded.length ? <p className="compact-empty">Selecciona los medios y pulsa Cargar.</p> : filtered.length === 0 ? <p className="compact-empty">{loading ? 'Consultando las fuentes…' : 'No hay noticias con los filtros seleccionados.'}</p> : filtered.map((item, index) => {
           const outlet = SOURCES.find(source => source.code === item.source);
