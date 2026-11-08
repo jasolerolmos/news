@@ -1,354 +1,92 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-interface NewsItem {
-    title: string;
-    url: string;
-    category: string;
-    source: string;
+interface NewsItem { title: string; url: string; category: string; source: string }
+const SOURCES = [
+  { id: 'abc', code: 'ABC', label: 'ABC' },
+  { id: 'elpais', code: 'ELPAIS', label: 'El País' },
+  { id: 'ideal', code: 'IDEAL', label: 'Ideal' },
+  { id: 'granadahoy', code: 'GRANADAHOY', label: 'Granada Hoy' },
+  { id: 'xataka', code: 'XATAKA', label: 'Xataka' },
+] as const;
+
+function HomeContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [items, setItems] = useState<NewsItem[]>([]);
+  const [failed, setFailed] = useState<string[]>([]);
+  const [empty, setEmpty] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [revision, setRevision] = useState(0);
+  const [source, setSource] = useState('all');
+  const [category, setCategory] = useState('all');
+  const [search, setSearch] = useState(searchParams.get('search') || '');
+  const [url, setUrl] = useState('');
+
+  useEffect(() => { setSearch(searchParams.get('search') || ''); }, [searchParams]);
+  useEffect(() => {
+    const controller = new AbortController();
+    async function load() {
+      setLoading(true);
+      const results = await Promise.all(SOURCES.map(async (item) => {
+        try {
+          const response = await fetch(`/api/news/${item.id}`, { signal: controller.signal });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const data: unknown = await response.json();
+          if (!Array.isArray(data)) throw new Error('Invalid response');
+          const valid = data.filter((entry): entry is NewsItem => entry && typeof entry.title === 'string' && typeof entry.url === 'string' && typeof entry.category === 'string' && typeof entry.source === 'string');
+          return { label: item.label, data: valid, failed: false };
+        } catch {
+          return { label: item.label, data: [] as NewsItem[], failed: true };
+        }
+      }));
+      if (controller.signal.aborted) return;
+      setItems(results.flatMap(result => result.data));
+      setFailed(results.filter(result => result.failed).map(result => result.label));
+      setEmpty(results.filter(result => !result.failed && result.data.length === 0).map(result => result.label));
+      setLoading(false);
+    }
+    void load();
+    return () => controller.abort();
+  }, [revision]);
+
+  const categories = useMemo(() => Array.from(new Set(items.map(item => item.category))).sort((a, b) => a.localeCompare(b, 'es')), [items]);
+  const filtered = useMemo(() => {
+    const words = search.toLocaleLowerCase('es').trim().split(/\s+/).filter(Boolean);
+    return items.filter(item => (source === 'all' || item.source === source) && (category === 'all' || item.category === category) && words.every(word => item.title.toLocaleLowerCase('es').includes(word)));
+  }, [items, source, category, search]);
+
+  function submitUrl(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (url.trim()) router.push(`/article?url=${encodeURIComponent(url.trim())}`);
+  }
+  function resetFilters() { setSearch(''); setSource('all'); setCategory('all'); }
+
+  return (
+    <main className="news-shell">
+      <div className="news-intro">
+        <div><p className="news-eyebrow">Tu lectura diaria · Una sola portada</p><h1>La actualidad,<br />a tu manera.</h1><p>Descubre los titulares de distintos medios, encuentra los temas que te interesan y lee con más perspectiva.</p></div>
+        <div className="news-intro-meta"><strong>{loading ? '—' : items.length}</strong> titulares disponibles</div>
+      </div>
+      <div className="news-toolbar">
+        <div className="news-field"><label htmlFor="news-search">Buscar en los titulares</label><input id="news-search" className="news-input" type="search" placeholder="Por ejemplo: ciencia, economía…" value={search} onChange={event => setSearch(event.target.value)} /></div>
+        <div className="news-field"><label htmlFor="article-url">Leer una noticia por URL</label><form className="news-url-form" onSubmit={submitUrl}><input id="article-url" className="news-input" type="url" placeholder="https://…" value={url} onChange={event => setUrl(event.target.value)} required /><button className="news-button" type="submit">Abrir noticia →</button></form><small style={{ color: 'var(--muted)' }}>Solo enlaces HTTPS de medios compatibles.</small></div>
+      </div>
+      <div className="news-filters">
+        <div><label htmlFor="source-filter">Medio</label><select id="source-filter" className="news-select" value={source} onChange={event => setSource(event.target.value)}><option value="all">Todos los medios</option>{SOURCES.map(item => <option key={item.id} value={item.code}>{item.label}</option>)}</select></div>
+        <div><label htmlFor="category-filter">Categoría</label><select id="category-filter" className="news-select" value={category} onChange={event => setCategory(event.target.value)}><option value="all">Todas las categorías</option>{categories.map(item => <option key={item} value={item}>{item}</option>)}</select></div>
+        <button type="button" className="news-button secondary" onClick={resetFilters}>Limpiar filtros</button>
+      </div>
+      <div className="news-results-head"><h2>Últimos titulares</h2><span aria-live="polite">{loading ? 'Actualizando…' : `${filtered.length} noticias mostradas`}</span></div>
+      {!loading && (failed.length > 0 || empty.length > 0) && <div className="news-alert" role="status">{failed.length > 0 && <p>No se pudieron cargar: {failed.join(', ')}.</p>}{empty.length > 0 && <p>Sin titulares detectados: {empty.join(', ')}. El medio puede haber cambiado su página o no tener resultados.</p>}<button type="button" className="news-button secondary" style={{ marginTop: '.6rem' }} onClick={() => setRevision(value => value + 1)}>Reintentar</button></div>}
+      {loading ? <div className="news-loading" role="status">Consultando las fuentes…</div> : <div className="news-list">{filtered.length === 0 ? <div className="news-empty">No hay titulares para mostrar. Prueba otros filtros o vuelve a intentarlo.</div> : filtered.map((item, index) => <article className="news-item" key={`${item.source}-${item.url}-${index}`}><div className="news-item-meta"><span className="news-item-source">{SOURCES.find(s => s.code === item.source)?.label || item.source}</span><span aria-hidden="true">/</span><span>{item.category}</span></div><h3><Link href={`/article?url=${encodeURIComponent(item.url)}`}>{item.title}</Link></h3><Link className="news-item-action" href={`/article?url=${encodeURIComponent(item.url)}`}>Leer noticia →</Link></article>)}</div>}
+    </main>
+  );
 }
 
 export default function Home() {
-    const [allNews, setAllNews] = useState<NewsItem[]>([]);
-    const [filteredNews, setFilteredNews] = useState<NewsItem[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(false);
-
-    const [sourceFilter, setSourceFilter] = useState('all');
-    const [categoryFilter, setCategoryFilter] = useState('all');
-    const router = useRouter();
-    const searchParams = useSearchParams();
-    const initialSearch = searchParams.get('search') || '';
-    
-    const [searchTerm, setSearchTerm] = useState(initialSearch);
-    const [urlInput, setUrlInput] = useState('');
-    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-    const [isFiltersOpen, setIsFiltersOpen] = useState(false);
-
-    useEffect(() => {
-        const querySearch = searchParams.get('search');
-        setSearchTerm(querySearch || '');
-    }, [searchParams]);
-
-    const [categories, setCategories] = useState<string[]>([]);
-
-    const handleUrlSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (urlInput.trim()) {
-            let cleanUrl = urlInput.trim();
-            try {
-                const parsedUrl = new URL(cleanUrl);
-                cleanUrl = parsedUrl.origin + parsedUrl.pathname;
-            } catch (err) {
-                cleanUrl = cleanUrl.split('?')[0].split('#')[0];
-            }
-            router.push(`/article?url=${encodeURIComponent(cleanUrl)}`);
-        }
-    };
-
-    useEffect(() => {
-        async function fetchNews() {
-            try {
-                setLoading(true);
-                const [abcRes, elpaisRes, idealRes, granadahoyRes, xatakaRes] = await Promise.all([
-                    fetch('/api/news/abc'),
-                    fetch('/api/news/elpais'),
-                    fetch('/api/news/ideal'),
-                    fetch('/api/news/granadahoy'),
-                    fetch('/api/news/xataka')
-                    // fetch('/api/news/sueddeutsche'),  // desactivado
-                    // fetch('/api/news/faz')            // desactivado
-                ]);
-
-                const abcData = await abcRes.json();
-                const elpaisData = await elpaisRes.json();
-                const idealData = await idealRes.json();
-                const granadahoyData = await granadahoyRes.json();
-                const xatakaData = await xatakaRes.json();
-
-                const combined = [...abcData, ...elpaisData, ...idealData, ...granadahoyData, ...xatakaData];
-                // SZ y FAZ desactivados: ...sueddeutscheData, ...fazData
-                setAllNews(combined);
-                setFilteredNews(combined);
-
-                // Extract unique categories
-                const uniqueCategories = Array.from(
-                    new Set(combined.map((item: NewsItem) => item.category))
-                ).sort();
-                setCategories(uniqueCategories as string[]);
-
-                setLoading(false);
-            } catch (err) {
-                console.error('Error fetching news:', err);
-                setError(true);
-                setLoading(false);
-            }
-        }
-
-        fetchNews();
-    }, []);
-
-    useEffect(() => {
-        let filtered = allNews;
-
-        // Apply source filter
-        if (sourceFilter !== 'all') {
-            filtered = filtered.filter(item => item.source === sourceFilter);
-        }
-
-        // Apply category filter
-        if (categoryFilter !== 'all') {
-            filtered = filtered.filter(item => item.category === categoryFilter);
-        }
-
-        // Apply search filter
-        if (searchTerm) {
-            const searchWords = searchTerm.toLowerCase().trim().split(/\s+/).filter(w => w.length > 0);
-            filtered = filtered.filter(item => {
-                const titleLower = item.title.toLowerCase();
-                return searchWords.every(word => titleLower.includes(word));
-            });
-        }
-
-        setFilteredNews(filtered);
-    }, [sourceFilter, categoryFilter, searchTerm, allNews]);
-
-    if (loading) {
-        return (
-            <div className="container">
-                <div className="loading">📰 Cargando noticias...</div>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="container">
-                <div className="error">⚠️ No se pudieron cargar las noticias. Verifica tu conexión o intenta más tarde.</div>
-            </div>
-        );
-    }
-
-    // Calcular el "Top" de categorías (las 6 con más noticias)
-    const categoryCounts = allNews.reduce((acc, item) => {
-        acc[item.category] = (acc[item.category] || 0) + 1;
-        return acc;
-    }, {} as Record<string, number>);
-    
-    // Ordenar categorías por cantidad de noticias (de mayor a menor)
-    const sortedCategories = [...categories].sort((a, b) => categoryCounts[b] - categoryCounts[a]);
-    
-    const topCategories = sortedCategories.slice(0, 6);
-    const otherCategories = sortedCategories.slice(6);
-    
-    return (
-        <div className="container" style={{ paddingTop: '1rem' }}>
-
-            {/* Search Box */}
-            <div className="search-container">
-                <div className="search-box">
-                    <svg className="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                    <input
-                        type="text"
-                        className="search-input"
-                        placeholder="Buscar noticias por título..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        autoComplete="off"
-                    />
-                    {searchTerm && (
-                        <button
-                            className="clear-search visible"
-                            onClick={() => setSearchTerm('')}
-                            title="Limpiar búsqueda"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    )}
-                </div>
-            </div>
-
-            {/* Custom URL Input */}
-            <div className="search-container" style={{ marginTop: '1rem' }}>
-                <form className="url-form" onSubmit={handleUrlSubmit}>
-                    <div className="search-box">
-                        <svg className="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                        </svg>
-                        <input
-                            type="url"
-                            className="search-input"
-                            placeholder="Pegar URL de una noticia para leer..."
-                            value={urlInput}
-                            onChange={(e) => setUrlInput(e.target.value)}
-                            autoComplete="off"
-                            required
-                        />
-                    </div>
-                    <button type="submit" className="filter-btn active url-btn">
-                        Leer noticia
-                    </button>
-                </form>
-            </div>
-
-            {/* Filter Toggle and Stats */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <span className="stats" style={{ margin: 0 }}>📰 {filteredNews.length} noticias</span>
-                <button 
-                    className="mobile-filter-toggle"
-                    style={{ width: 'auto', marginBottom: 0 }}
-                    onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ transform: isFiltersOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                    </svg>
-                    {isFiltersOpen ? 'Ocultar filtros' : 'Mostrar filtros'}
-                </button>
-            </div>
-
-            {/* Filter Bar */}
-            <div className={`filter-container-wrapper ${isFiltersOpen ? 'open' : ''}`}>
-                <div className="filter-container">
-                    <div className="filter-section">
-                    <span className="filter-section-label">Fuente:</span>
-                    <button
-                        className={`filter-btn ${sourceFilter === 'all' ? 'active' : ''}`}
-                        onClick={() => setSourceFilter('all')}
-                    >
-                        Todas
-                    </button>
-                    <button
-                        className={`filter-btn ${sourceFilter === 'ABC' ? 'active' : ''}`}
-                        onClick={() => setSourceFilter('ABC')}
-                    >
-                        ABC
-                    </button>
-                    <button
-                        className={`filter-btn ${sourceFilter === 'ELPAIS' ? 'active' : ''}`}
-                        onClick={() => setSourceFilter('ELPAIS')}
-                    >
-                        El País
-                    </button>
-                    <button
-                        className={`filter-btn ${sourceFilter === 'IDEAL' ? 'active' : ''}`}
-                        onClick={() => setSourceFilter('IDEAL')}
-                    >
-                        Ideal
-                    </button>
-                    <button
-                        className={`filter-btn ${sourceFilter === 'GRANADAHOY' ? 'active' : ''}`}
-                        onClick={() => setSourceFilter('GRANADAHOY')}
-                    >
-                        Granada Hoy
-                    </button>
-                    <button
-                        className={`filter-btn ${sourceFilter === 'XATAKA' ? 'active' : ''}`}
-                        onClick={() => setSourceFilter('XATAKA')}
-                    >
-                        Xataka
-                    </button>
-                    {/* Filtros SZ y FAZ desactivados temporalmente */}
-                </div>
-                <div className="filter-divider"></div>
-                <div className="filter-section">
-                    <span className="filter-section-label">Top Categorías:</span>
-                    <button
-                        className={`filter-btn ${categoryFilter === 'all' ? 'active' : ''}`}
-                        onClick={() => setCategoryFilter('all')}
-                    >
-                        Todas
-                    </button>
-                    {topCategories.map((cat) => (
-                        <button
-                            key={cat}
-                            className={`filter-btn ${categoryFilter === cat ? 'active' : ''}`}
-                            onClick={() => setCategoryFilter(cat)}
-                        >
-                            {cat.toLowerCase()}
-                        </button>
-                    ))}
-                    
-                    {otherCategories.length > 0 && (
-                        <div style={{ position: 'relative', marginLeft: '0.5rem' }}>
-                            <button
-                                className={`filter-btn ${otherCategories.includes(categoryFilter) ? 'active' : ''}`}
-                                style={{ paddingRight: '2.5rem', display: 'flex', alignItems: 'center' }}
-                                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                            >
-                                {otherCategories.includes(categoryFilter) ? categoryFilter.toLowerCase() : "Otras..."}
-                                <svg style={{ position: 'absolute', right: '1rem', transition: 'transform 0.2s', transform: isDropdownOpen ? 'rotate(180deg)' : 'rotate(0)' }} xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                                </svg>
-                            </button>
-                            
-                            {isDropdownOpen && (
-                                <div className="custom-dropdown">
-                                    {otherCategories.map(cat => (
-                                        <button
-                                            key={cat}
-                                            className={`dropdown-item ${categoryFilter === cat ? 'active' : ''}`}
-                                            onClick={() => {
-                                                setCategoryFilter(cat);
-                                                setIsDropdownOpen(false);
-                                            }}
-                                        >
-                                            {cat.toLowerCase()} <span className="dropdown-count">({categoryCounts[cat]})</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-            </div>
-            </div>
-
-            {/* News Grid */}
-            <div className="news-grid">
-                {filteredNews.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-secondary)', gridColumn: '1 / -1' }}>
-                        <p>No se encontraron noticias con los filtros seleccionados.</p>
-                    </div>
-                ) : (
-                    filteredNews.map((item, index) => (
-                        <article
-                            key={`${item.source}-${index}`}
-                            className="news-card"
-                            data-source={item.source}
-                            data-category={item.category}
-                        >
-                            <div className="card-content">
-                                <span className={`source-badge ${item.source.toLowerCase()}`}>
-                                    {item.source === 'ABC' ? 'ABC' : item.source === 'IDEAL' ? 'IDEAL' : item.source === 'GRANADAHOY' ? 'GRANADA HOY' : item.source === 'XATAKA' ? 'XATAKA' : 'EL PAÍS'}
-                                </span>
-                                <Link href={`/category/${item.category.toLowerCase()}`} style={{ textDecoration: 'none' }}>
-                                    <span className="category-tag" style={{ cursor: 'pointer' }}>{item.category}</span>
-                                </Link>
-                                <h2 className="news-title">
-                                    <Link href={`/article?url=${encodeURIComponent(item.url)}`} className="news-link">
-                                        {item.title}
-                                    </Link>
-                                </h2>
-                            </div>
-                            <div className="card-footer">
-                                <span className="read-more">
-                                    Leer más
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                                    </svg>
-                                </span>
-                            </div>
-                        </article>
-                    ))
-                )}
-            </div>
-        </div>
-    );
+  return <Suspense fallback={<main className="news-shell"><div className="news-loading">Cargando portada…</div></main>}><HomeContent /></Suspense>;
 }
