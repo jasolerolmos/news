@@ -59,6 +59,7 @@ export async function GET(request: Request) {
   try {
     const response = await axios.get<string>(url.toString(), {
       httpsAgent,
+      family: 4,
       proxy: false,
       maxRedirects: 0,
       maxContentLength: 2 * 1024 * 1024,
