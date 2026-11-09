@@ -70,3 +70,14 @@ test('one concurrent browser per worker, then rejects invalid browser output', a
   h.children[1].complete(null, 1);
   assert.equal((await third).status, 502);
 });
+
+
+test('concurrent requests for the same article share one browser', async () => {
+  const h = harness();
+  const first = h.get('https://elpais.com/a');
+  const second = h.get('https://elpais.com/a');
+  assert.equal(h.children.length, 1);
+  h.children[0].complete({ html: 'Un parrafo suficientemente largo para verificar la respuesta del lector y preservar texto sin ejecutar scripts.', url: 'https://elpais.com/a' });
+  assert.equal((await first).status, 200);
+  assert.equal((await second).status, 200);
+});
