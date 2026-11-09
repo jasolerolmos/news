@@ -18,6 +18,8 @@ function ArticleContent() {
   const [article, setArticle] = useState<Article | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  let elpaisUrl: string | null = null;
+  try { const parsed = new URL(url || ''); if (parsed.protocol === 'https:' && ['elpais.com', 'www.elpais.com'].includes(parsed.hostname) && !parsed.port && !parsed.username && !parsed.password) elpaisUrl = parsed.toString(); } catch { /* invalid links are not rendered */ }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -39,7 +41,7 @@ function ArticleContent() {
 
   return <main className="news-shell" style={{ maxWidth: '860px' }}>
     <Link className="news-item-action" href="/">← Volver a la portada</Link>
-    {loading ? <p className="news-loading" role="status">Cargando artículo…</p> : error || !article ? <div className="news-alert" role="alert">{error || 'No se pudo cargar el artículo.'}</div> : <article style={{ marginTop: '2rem', borderTop: '1px solid var(--ink)', paddingTop: '2rem' }}>
+    {loading ? <p className="news-loading" role="status">Cargando artículo…</p> : error || !article ? <div className="news-alert" role="alert">{error || 'No se pudo cargar el artículo.'}{elpaisUrl && <p><a href={elpaisUrl} target="_blank" rel="noopener noreferrer">Abrir la fuente original ↗</a></p>}</div> : <article style={{ marginTop: '2rem', borderTop: '1px solid var(--ink)', paddingTop: '2rem' }}>
       <p className="news-eyebrow">Lectura · Fuente externa</p>
       <h1 style={{ fontSize: 'clamp(2.2rem, 5vw, 3.5rem)', lineHeight: 1.15 }}>{article.title || 'Artículo sin título'}</h1>
       <p style={{ color: 'var(--muted)', margin: '1rem 0 1.75rem' }}>El texto disponible puede estar incompleto. Consulta siempre la publicación original.</p>
