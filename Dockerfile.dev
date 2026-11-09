@@ -1,7 +1,16 @@
 # Dockerfile para desarrollo (más simple y rápido)
-FROM node:18-alpine
+FROM node:20-bookworm-slim
 
 WORKDIR /app
+
+# Chromium headless para la captura de HTML de El Pais.
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright \
+    ELPAIS_PYTHON=/opt/elpais-venv/bin/python
+RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-venv \
+    && python3 -m venv /opt/elpais-venv \
+    && /opt/elpais-venv/bin/pip install --no-cache-dir playwright==1.52.0 beautifulsoup4==4.13.4 \
+    && /opt/elpais-venv/bin/python -m playwright install --with-deps chromium \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copiar package files
 COPY package.json package-lock.json* ./
