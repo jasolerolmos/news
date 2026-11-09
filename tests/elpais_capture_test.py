@@ -45,6 +45,13 @@ class CaptureSafetyTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             capture.capture('http://127.0.0.1/')
 
+    def test_decompress_bounded_enforces_max_html(self):
+        import gzip
+        small = gzip.compress(b'<article><p>Hola</p></article>')
+        self.assertEqual(capture.decompress_bounded(small, 'gzip'), b'<article><p>Hola</p></article>')
+        oversized = gzip.compress(b'x' * (capture.MAX_HTML + 10))
+        self.assertIsNone(capture.decompress_bounded(oversized, 'gzip'))
+
 
 if __name__ == '__main__':
     unittest.main()

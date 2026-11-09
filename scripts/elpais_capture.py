@@ -1,19 +1,26 @@
 #!/usr/bin/env python3
-"""Fetch one El Pais HTML document with Chromium, through a restricted proxy."""
+"""Fetch one El Pais HTML document with validated direct HTTPS or Chromium fallback."""
+from http.client import HTTPException, HTTPResponse
 import ipaddress
 import json
 import os
 import select
 import socket
 import socketserver
+import ssl
 import sys
 import tempfile
 import threading
 import time
-from urllib.parse import urlsplit
+from urllib.parse import urldefrag, urljoin, urlsplit
+import zlib
 
 MAX_HTML = 2 * 1024 * 1024
 ALLOWED_DOCUMENT_HOSTS = {'elpais.com', 'www.elpais.com'}
+BROWSER_UA = (
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+    'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+)
 
 
 def valid_document_url(url):
@@ -102,11 +109,96 @@ class ProxyServer(socketserver.ThreadingTCPServer):
     daemon_threads = True
 
 
+def decompress_bounded(raw, encoding):
+    encoding = (encoding or '').strip().lower()
+    if not encoding or encoding == 'identity':
+        return raw if len(raw) <= MAX_HTML else None
+    if encoding == 'gzip':
+        decompressor = zlib.decompressobj(16 + zlib.MAX_WBITS)
+    elif encoding == 'deflate':
+        decompressor = zlib.decompressobj()
+    else:
+        return None
+    out = decompressor.decompress(raw, MAX_HTML + 1)
+    if decompressor.unconsumed_tail:
+        return None
+    tail = decompressor.flush()
+    if len(out) + len(tail) > MAX_HTML:
+        return None
+    return out + tail
+
+
+def has_article_text(html):
+    from bs4 import BeautifulSoup
+    article = BeautifulSoup(html, 'html.parser').find('article')
+    return bool(article and any(p.get_text(' ', strip=True) for p in article.find_all('p')))
+
+
+def fetch_direct(url, timeout=8, max_redirects=3):
+    current = urldefrag(url)[0]
+    tls_context = ssl.create_default_context()
+    for _ in range(max_redirects + 1):
+        if not valid_document_url(current):
+            return None
+        parsed = urlsplit(current)
+        raw_sock = connect_public(parsed.hostname, 443, timeout=timeout)
+        with raw_sock:
+            with tls_context.wrap_socket(raw_sock, server_hostname=parsed.hostname) as tls_sock:
+                tls_sock.settimeout(timeout)
+                target = parsed.path or '/'
+                if parsed.query:
+                    target = f'{target}?{parsed.query}'
+                if any(ch in target for ch in ('\r', '\n', ' ')):
+                    return None
+                request = (
+                    f'GET {target} HTTP/1.1\r\n'
+                    f'Host: {parsed.hostname}\r\n'
+                    f'User-Agent: {BROWSER_UA}\r\n'
+                    'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8\r\n'
+                    'Accept-Language: es-ES,es;q=0.9,en;q=0.8\r\n'
+                    'Accept-Encoding: gzip, deflate\r\n'
+                    'Connection: close\r\n\r\n'
+                )
+                tls_sock.sendall(request.encode('ascii'))
+                response = HTTPResponse(tls_sock)
+                response.begin()
+                if response.status in (301, 302, 303, 307, 308):
+                    location = response.getheader('Location')
+                    if not location:
+                        return None
+                    current = urldefrag(urljoin(current, location))[0]
+                    continue
+                if response.status != 200:
+                    return None
+                content_type = (response.getheader('Content-Type') or '').lower()
+                if not content_type.startswith(('text/html', 'application/xhtml+xml')):
+                    return None
+                declared = response.getheader('Content-Length')
+                if declared and int(declared) > MAX_HTML:
+                    return None
+                raw = response.read(MAX_HTML + 1)
+                if len(raw) > MAX_HTML:
+                    return None
+                body = decompress_bounded(raw, response.getheader('Content-Encoding'))
+                if body is None:
+                    return None
+                html = body.decode('utf-8', errors='replace')
+                if has_article_text(html):
+                    return {'html': html, 'url': current}
+                return None
+    return None
+
+
 def capture(url, timeout=18):
     if not valid_document_url(url):
         raise ValueError('URL de El Pais no permitida')
+    try:
+        direct = fetch_direct(url, timeout=min(8, timeout))
+        if direct is not None:
+            return direct
+    except (OSError, ssl.SSLError, HTTPException, ValueError, zlib.error):
+        pass
     # Lazy imports keep validation and proxy checks independently testable.
-    from bs4 import BeautifulSoup
     from playwright.sync_api import Error as PlaywrightError, sync_playwright
 
     captured = None
@@ -120,9 +212,14 @@ def capture(url, timeout=18):
                     executable = os.environ.get('CHROMIUM_PATH') or None
                     context = playwright.chromium.launch_persistent_context(
                         user_data_dir=profile, headless=True, executable_path=executable,
+                        user_agent=BROWSER_UA, locale='es-ES',
                         service_workers='block',
                         proxy={'server': f'http://127.0.0.1:{proxy.server_address[1]}', 'bypass': '<-loopback>'},
-                        args=['--disable-quic', '--force-webrtc-ip-handling-policy=disable_non_proxied_udp'],
+                        args=[
+                            '--disable-blink-features=AutomationControlled',
+                            '--disable-quic',
+                            '--force-webrtc-ip-handling-policy=disable_non_proxied_udp',
+                        ],
                     )
                     try:
                         page = context.pages[0] if context.pages else context.new_page()
@@ -154,8 +251,7 @@ def capture(url, timeout=18):
                                 if len(raw) > MAX_HTML:
                                     return
                                 html = raw.decode('utf-8', errors='replace')
-                                article = BeautifulSoup(html, 'html.parser').find('article')
-                                if article and any(p.get_text(' ', strip=True) for p in article.find_all('p')):
+                                if has_article_text(html):
                                     captured = {'html': html, 'url': response.url}
                             except (PlaywrightError, ValueError):
                                 return

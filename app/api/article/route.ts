@@ -4,7 +4,7 @@ import { JSDOM } from 'jsdom';
 import { Agent } from 'node:https';
 import { lookup } from 'node:dns';
 import { spawn } from 'node:child_process';
-import path from 'node:path';
+import { join } from 'node:path';
 
 export const runtime = 'nodejs';
 
@@ -48,7 +48,7 @@ async function captureElPais(url: string): Promise<{ data: string; url: string }
   if (currentCapture?.url === url) return currentCapture.promise;
   if (currentCapture) throw new Error('BROWSER_BUSY');
   const promise = new Promise<{ data: string; url: string }>((resolve, reject) => {
-      const script = path.join(process.cwd(), 'scripts', 'elpais_capture.py');
+      const script = join(process.cwd(), 'scripts', 'elpais_capture.py');
       const child = spawn(process.env.ELPAIS_PYTHON || 'python3', [script, url], {
         detached: true, stdio: ['ignore', 'pipe', 'pipe'],
       });
