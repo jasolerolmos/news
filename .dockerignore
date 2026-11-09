@@ -11,3 +11,6 @@ README.md
 # Archivos PHP antiguos (opcional)
 *.php
 *.py
+
+# El capturador headless forma parte de la aplicacion.
+!scripts/elpais_capture.py
