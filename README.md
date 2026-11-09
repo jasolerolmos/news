@@ -26,7 +26,7 @@ La portada guarda los titulares y su fecha de carga **por medio** en `sessionSto
 
 - ABC, Ideal y Granada Hoy analizan HTML; El País y Xataka usan RSS.
 - FAZ y Süddeutsche figuran como **experimentales** y no están seleccionados por defecto. Su funcionamiento depende de la disponibilidad de sus sitios y feeds.
-- `/article?url=...` solicita a `/api/article` el texto disponible y ofrece un enlace a la publicación original. El resultado puede ser parcial; no se proporciona acceso a contenido de pago.
+- `/article?url=...` solicita a `/api/article` el texto disponible y ofrece un enlace a la publicación original. Para El País, la API captura el HTML de la respuesta con Chromium headless; para los demás medios mantiene la descarga HTTP anterior. El resultado depende de lo que el servidor entregue y puede ser parcial o bloqueado.
 - Las páginas anteriores `/<fuente>` y `/category/<id>` se conservan. La selección y la caché descritas aquí pertenecen a la **portada**; esas rutas independientes mantienen su carga propia. Las categorías por sección consultan ABC, El País e Ideal.
 
 ## Docker Compose
@@ -41,23 +41,25 @@ Para incorporar cambios de código en una copia existente:
 
 ```bash
 git pull
-docker compose up -d news-dev
+docker compose up -d --build news-dev
 ```
 
-Compose monta el código local en `/app`; el modo de desarrollo recarga los cambios. Si cambian las dependencias, actualízalas dentro del contenedor (el volumen de `node_modules` puede conservar las anteriores):
+La imagen incluye Python, Playwright y Chromium para El País; la primera construcción descarga dependencias y puede tardar. Compose monta el código local en `/app`; el modo de desarrollo recarga los cambios. Si cambian las dependencias, actualízalas dentro del contenedor (el volumen de `node_modules` puede conservar las anteriores):
 
 ```bash
 docker compose exec news-dev npm install
 docker compose restart news-dev
 ```
 
-Estos cambios de selección y caché no requieren servicios nuevos, base de datos ni cambios en Compose.
+El lector no requiere servicios nuevos ni una base de datos. El volumen de dependencias de Node puede conservar paquetes de una imagen anterior; si hay errores tras actualizar Node, reinstala las dependencias dentro del contenedor y reinicia el servicio.
 
-El Dockerfile de producción es independiente y declara el puerto 3000. Antes de usarlo, revisa su construcción: depende de `package-lock.json` para `npm ci` y copia `public/`, que pueden no existir en el repositorio. El servicio de producción de Compose está comentado por defecto.
+El Dockerfile de producción es independiente y declara el puerto 3000. Depende de `package-lock.json` e instala Chromium para el lector de El País. El servicio de producción de Compose está comentado por defecto.
 
 ## Ejecución sin Docker
 
-Node.js 18.17 o posterior y npm:
+Node.js 20 o posterior, npm, Python 3 con `venv` y las dependencias de sistema de Chromium. Fuera de Docker instala Playwright y Beautiful Soup en un entorno virtual, instala Chromium con Playwright y configura `ELPAIS_PYTHON` con la ruta al intérprete de ese entorno. Sin estas dependencias, El País mostrará un error; el resto de los medios no necesita Chromium.
+
+Instalación de la aplicación:
 
 ```bash
 npm install
@@ -71,7 +73,7 @@ npm run build
 npm start
 ```
 
-Los scripts de inicio usan el puerto 3010. El proyecto utiliza Next.js 14, React 18, TypeScript, Axios y jsdom. Los archivos PHP y Python son anteriores o experimentales, no parte de la aplicación Next.js.
+Los scripts de inicio usan el puerto 3010. El proyecto utiliza Next.js 14, React 18, TypeScript, Axios y jsdom. Los archivos PHP y los scripts Python de la raíz son anteriores o experimentales; `scripts/elpais_capture.py` sí forma parte del lector de El País.
 
 ## Pruebas
 
@@ -85,6 +87,13 @@ Sin Docker, después de instalar dependencias:
 
 ```bash
 node --test tests/news-session.test.cjs
+```
+
+Para comprobar el lector de El País con red y navegador simulados:
+
+```bash
+node --test tests/article-api.test.cjs
+python3 -m unittest discover -s tests -p "*_test.py"
 ```
 
 Estas pruebas no sustituyen una compilación completa ni la comprobación en navegador contra los sitios reales.
@@ -103,13 +112,17 @@ app/
   layout.tsx                   Estilos y acceso de vuelta
   globals.css, editorial.css, compact.css
 
+scripts/elpais_capture.py     Captura headless y proxy de salida
+tests/article-api.test.cjs    Pruebas simuladas de la API de artículos
+tests/elpais_capture_test.py  Pruebas simuladas de validación y red
 tests/news-session.test.cjs    Pruebas automatizadas de la sesión
 ```
 
 ## Seguridad y limitaciones
 
 - El lector solo admite HTTPS, sin credenciales ni puertos alternativos, en una lista explícita de dominios de medios. Conserva la query string y elimina el fragmento.
-- Valida la dirección IPv4 utilizada y rechaza rangos no públicos. No usa proxy ni sigue redirecciones automáticas. Esto reduce el riesgo de SSRF, pero puede impedir la lectura de sitios con redirecciones o IPv6. No sustituye restricciones de salida ni una revisión de seguridad.
+- Para medios distintos de El País, valida la dirección IPv4 utilizada y rechaza rangos no públicos; no usa proxy ni sigue redirecciones automáticas. Para El País, Chromium usa un proxy local HTTPS que valida y fija una IPv4 pública en cada conexión, limita los puertos y restringe la navegación principal a los dominios autorizados. La verificación y recursos externos pueden fallar si el sitio cambia. Estas medidas no sustituyen aislamiento del navegador, restricciones de salida de red a nivel de infraestructura ni una revisión de seguridad.
+- Solo se ejecuta una captura de El País a la vez por proceso Node; las peticiones simultáneas al mismo artículo comparten la captura. Hay límites de tiempo y tamaño, pero no son globales entre réplicas. Configura un limitador externo si se expone la web.
 - Los archivos PHP anteriores no han recibido el mismo endurecimiento: **no los expongas a Internet** sin auditarlos.
 - Los sitios pueden cambiar de estructura o bloquear peticiones. La extracción genérica de artículos no garantiza el texto completo.
 - No se implementa una caché compartida ni un limitador del servidor. En producción, configura límites y monitorización; aísla el servicio de infraestructura sensible.
