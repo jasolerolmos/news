@@ -15,8 +15,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends python3 python3
 # Copiar package files
 COPY package.json package-lock.json* ./
 
-# Instalar dependencias
-RUN npm install
+# El lockfile puede omitir el SWC de la plataforma. Instalar y comprobar el
+# binario glibc correspondiente sin modificar el lockfile del repositorio.
+RUN npm install \
+    && node -e "const {execFileSync}=require('node:child_process'); const arch=process.arch; if(!['arm64','x64'].includes(arch)) throw Error('Arquitectura SWC no soportada: '+arch); const name='@next/swc-linux-'+arch+'-gnu'; const version=require('next/package.json').optionalDependencies[name]; if(!version) throw Error('Next no declara '+name); execFileSync('npm',['install','--no-save','--package-lock=false',name+'@'+version],{stdio:'inherit'}); require(name);"
 
 # Copiar el resto del código
 COPY . .
